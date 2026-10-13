@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { Skull, Flame, Calendar, Clock, MapPin, Wine, Search, User, Phone, CheckCircle2, AlertCircle, Copy, Send, ShieldCheck, Tag } from 'lucide-react';
+import { Skull, Flame, Calendar, Clock, MapPin, Wine, Search, User, Phone, CheckCircle2, AlertCircle, Copy, Send, ShieldCheck, Tag, Lock } from 'lucide-react';
 import TicketTrackerModal from '@/components/TicketTrackerModal';
 
 export default function HorrorFestLandingPage() {
@@ -245,52 +245,72 @@ export default function HorrorFestLandingPage() {
           </div>
         </div>
 
-        {/* HIGH-IMPACT LINEUP */}
+        {/* HIGH-IMPACT LINEUP (BLURRED / FASE SECRETA) */}
         <div className="w-full text-center mb-16 sm:mb-24 relative z-20">
           <div className="flex items-center justify-center gap-4 mb-8">
             <div className="h-[1px] w-12 bg-gradient-to-r from-transparent to-red-600"></div>
             <h3 className="text-[10px] sm:text-xs font-mono font-black text-red-500 tracking-[0.3em] uppercase">
-              Lineup Estelar
+              Lineup Estelar • Fase Secreta
             </h3>
             <div className="h-[1px] w-12 bg-gradient-to-l from-transparent to-red-600"></div>
           </div>
 
-          <div className="flex flex-col items-center gap-6">
-            {/* Headliners */}
-            <div className="flex flex-col items-center gap-0">
-              <div className="text-5xl sm:text-7xl font-black text-white uppercase tracking-tighter drop-shadow-[0_0_30px_rgba(255,255,255,0.2)]">
-                Vale Queen
+          <div className="relative overflow-hidden rounded-3xl p-6 sm:p-10 border border-red-900/40 bg-black/40 backdrop-blur-sm">
+            {/* Mystery Overlay Badge */}
+            <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/60 backdrop-blur-[2px] p-6 text-center">
+              <div className="flex items-center gap-2 border border-red-500/60 bg-red-950/80 text-red-200 font-mono text-[10px] sm:text-xs font-black uppercase tracking-[0.3em] px-4 py-2 rounded-full shadow-[0_0_25px_rgba(220,38,38,0.5)] animate-pulse">
+                <Lock className="w-3.5 h-3.5 text-red-400" />
+                <span>Lineup Confidencial</span>
               </div>
-              <div className="text-4xl sm:text-6xl font-black text-transparent bg-clip-text bg-gradient-to-b from-slate-100 to-slate-500 uppercase tracking-tighter mt-[-2%]">
-                DJ Jhonas <span className="text-lg sm:text-2xl text-slate-500 font-bold tracking-normal align-top"></span>
-              </div>
-            </div>
-
-            {/* Sub-headliners / Acts */}
-            <div className="w-full max-w-lg mt-4 flex flex-col items-center">
-              <span className="text-[9px] font-mono font-bold text-red-500/80 uppercase tracking-widest mb-2 border border-red-900/40 px-3 py-1 rounded-full bg-black/40 backdrop-blur-sm">
-                Show Urbano & Trap
-              </span>
-              <div className="text-xl sm:text-2xl font-black text-slate-300 uppercase tracking-tight flex flex-wrap justify-center items-center gap-x-4 gap-y-1">
-                <span>Dege</span>
-                <span className="text-red-900 text-sm">/</span>
-                <span>Pasatiempo</span>
-                <span className="text-red-900 text-sm">/</span>
-                <span>El Bala</span>
+              <h4 className="text-2xl sm:text-4xl font-black text-white uppercase tracking-tight mt-4 horror-glitch-text">
+                Por Revelar
+              </h4>
+              <p className="text-[11px] sm:text-xs text-slate-300 font-mono tracking-widest uppercase mt-2 max-w-md">
+                Artistas sorpresa, headliners urbanos & DJs estelares
+              </p>
+              <div className="mt-4 text-[10px] font-mono text-yellow-500/90 tracking-widest uppercase border border-yellow-500/30 bg-yellow-950/30 px-3 py-1 rounded-md">
+                ⚡ Preventa disponible antes de la revelación oficial ⚡
               </div>
             </div>
 
-            <div className="w-full max-w-lg mt-2 flex flex-col items-center">
-              <span className="text-[9px] font-mono font-bold text-red-500/80 uppercase tracking-widest mb-2 border border-red-900/40 px-3 py-1 rounded-full bg-black/40 backdrop-blur-sm">
-                Club & Performance
-              </span>
-              <div className="text-xl sm:text-2xl font-black text-slate-300 uppercase tracking-tight flex flex-wrap justify-center items-center gap-x-4 gap-y-1">
-                <span>DJ Fragot</span>
-                <span className="text-red-900 text-sm">/</span>
-                <span className="flex items-center gap-2">
-                  Los Babys
-                  <span className="text-[10px] sm:text-xs text-red-500 tracking-widest font-mono border border-red-500/30 px-1.5 py-0.5 rounded-sm">Gogos Show</span>
+            {/* Blurred Lineup Content */}
+            <div className="filter blur-md select-none pointer-events-none opacity-30 flex flex-col items-center gap-6">
+              {/* Headliners */}
+              <div className="flex flex-col items-center gap-0">
+                <div className="text-5xl sm:text-7xl font-black text-white uppercase tracking-tighter drop-shadow-[0_0_30px_rgba(255,255,255,0.2)]">
+                  Vale Queen
+                </div>
+                <div className="text-4xl sm:text-6xl font-black text-transparent bg-clip-text bg-gradient-to-b from-slate-100 to-slate-500 uppercase tracking-tighter mt-[-2%]">
+                  DJ Jhonas <span className="text-lg sm:text-2xl text-slate-500 font-bold tracking-normal align-top"></span>
+                </div>
+              </div>
+
+              {/* Sub-headliners / Acts */}
+              <div className="w-full max-w-lg mt-4 flex flex-col items-center">
+                <span className="text-[9px] font-mono font-bold text-red-500/80 uppercase tracking-widest mb-2 border border-red-900/40 px-3 py-1 rounded-full bg-black/40">
+                  Show Urbano & Trap
                 </span>
+                <div className="text-xl sm:text-2xl font-black text-slate-300 uppercase tracking-tight flex flex-wrap justify-center items-center gap-x-4 gap-y-1">
+                  <span>Dege</span>
+                  <span className="text-red-900 text-sm">/</span>
+                  <span>Pasatiempo</span>
+                  <span className="text-red-900 text-sm">/</span>
+                  <span>El Bala</span>
+                </div>
+              </div>
+
+              <div className="w-full max-w-lg mt-2 flex flex-col items-center">
+                <span className="text-[9px] font-mono font-bold text-red-500/80 uppercase tracking-widest mb-2 border border-red-900/40 px-3 py-1 rounded-full bg-black/40">
+                  Club & Performance
+                </span>
+                <div className="text-xl sm:text-2xl font-black text-slate-300 uppercase tracking-tight flex flex-wrap justify-center items-center gap-x-4 gap-y-1">
+                  <span>DJ Fragot</span>
+                  <span className="text-red-900 text-sm">/</span>
+                  <span className="flex items-center gap-2">
+                    Los Babys
+                    <span className="text-[10px] sm:text-xs text-red-500 tracking-widest font-mono border border-red-500/30 px-1.5 py-0.5 rounded-sm">Gogos Show</span>
+                  </span>
+                </div>
               </div>
             </div>
           </div>
