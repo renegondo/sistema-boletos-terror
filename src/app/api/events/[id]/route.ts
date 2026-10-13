@@ -18,6 +18,12 @@ export async function GET(
       return NextResponse.json({ error: 'Evento no encontrado' }, { status: 404 });
     }
 
+    if (id === 'evt_rodada_terror_2026') {
+      try {
+        db.prepare("UPDATE ticket_tiers SET price = 150.0, name = 'Cover General BYOB (Preventa Etapa 1)' WHERE id = 'tier_terror_001' AND (price = 200.0 OR price != 150.0)").run();
+      } catch {}
+    }
+
     const tierStmt = db.prepare('SELECT * FROM ticket_tiers WHERE event_id = ? ORDER BY price ASC');
     const tiers = tierStmt.all(id) as any[];
 

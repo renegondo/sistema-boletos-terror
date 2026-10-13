@@ -97,16 +97,9 @@ export default function HorrorFestLandingPage() {
     };
   }, [introDismissed]);
 
-  const generalTier = eventData?.tiers?.find((t: any) => t.id === 'tier_terror_001');
-  const vipTier = eventData?.tiers?.find((t: any) => t.id === 'tier_terror_002');
-
-  const tierPrice = tierType === 'general' 
-    ? (generalTier ? Number(generalTier.price) : 150) 
-    : (vipTier ? Number(vipTier.price) : 450);
-  const tierName = tierType === 'general' 
-    ? (generalTier?.name ?? 'Cover General BYOB (Preventa Etapa 1)') 
-    : (vipTier?.name ?? 'VIP Horror Lounge & Terraza');
-  const tierId = tierType === 'general' ? 'tier_terror_001' : 'tier_terror_002';
+  const tierPrice = 150;
+  const tierName = 'Cover General BYOB (Preventa Etapa 1)';
+  const tierId = 'tier_terror_001';
   const totalAmount = tierPrice * quantity;
 
   const handleBookingSubmit = async (e: React.FormEvent) => {
@@ -348,7 +341,7 @@ export default function HorrorFestLandingPage() {
                 <span className="text-white font-black text-sm">Cover BYOB Libre</span>
               </div>
               <div className="text-yellow-500 font-mono font-black text-lg">
-                ${tierPrice} <span className="text-[10px]">MXN</span>
+                $150 <span className="text-[10px]">MXN</span>
               </div>
             </div>
 

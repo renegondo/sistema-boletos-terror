@@ -120,6 +120,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Tipo de boleto no válido' }, { status: 400 });
     }
 
+    if (tier.id === 'tier_terror_001' && tier.price !== 150) {
+      tier.price = 150;
+      tier.name = 'Cover General BYOB (Preventa Etapa 1)';
+      try {
+        db.prepare("UPDATE ticket_tiers SET price = 150.0, name = 'Cover General BYOB (Preventa Etapa 1)' WHERE id = 'tier_terror_001'").run();
+      } catch {}
+    }
+
     // Check capacity
     if (tier.sold_count + parsedQty > tier.capacity) {
       return NextResponse.json(
