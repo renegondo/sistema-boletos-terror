@@ -31,9 +31,9 @@ interface TicketTierOption {
 const TICKET_TIERS: TicketTierOption[] = [
   {
     id: 'tier_terror_001',
-    name: 'Cover General BYOB',
-    price: 200,
-    badge: 'MÁS POPULAR',
+    name: 'Cover General BYOB (Preventa)',
+    price: 150,
+    badge: 'PREVENTA ETAPA 1',
     badgeColor: 'bg-red-600 text-white',
     recommended: true,
     features: [

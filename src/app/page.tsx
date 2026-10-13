@@ -21,6 +21,17 @@ export default function HorrorFestLandingPage() {
   const [error, setError] = useState('');
   const [successData, setSuccessData] = useState<any | null>(null);
   const [copiedClabe, setCopiedClabe] = useState(false);
+  const [eventData, setEventData] = useState<any>(null);
+
+  // Load live event tier data (synced with DB)
+  useEffect(() => {
+    fetch('/api/events/evt_rodada_terror_2026')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.event) setEventData(data.event);
+      })
+      .catch(() => {});
+  }, []);
 
   // Random Ambient Lightning
   useEffect(() => {
@@ -86,8 +97,15 @@ export default function HorrorFestLandingPage() {
     };
   }, [introDismissed]);
 
-  const tierPrice = tierType === 'general' ? 200 : 450;
-  const tierName = tierType === 'general' ? 'Cover General BYOB (Descorche Libre)' : 'VIP Horror Lounge & Terraza';
+  const generalTier = eventData?.tiers?.find((t: any) => t.id === 'tier_terror_001');
+  const vipTier = eventData?.tiers?.find((t: any) => t.id === 'tier_terror_002');
+
+  const tierPrice = tierType === 'general' 
+    ? (generalTier ? Number(generalTier.price) : 150) 
+    : (vipTier ? Number(vipTier.price) : 450);
+  const tierName = tierType === 'general' 
+    ? (generalTier?.name ?? 'Cover General BYOB (Preventa Etapa 1)') 
+    : (vipTier?.name ?? 'VIP Horror Lounge & Terraza');
   const tierId = tierType === 'general' ? 'tier_terror_001' : 'tier_terror_002';
   const totalAmount = tierPrice * quantity;
 
@@ -324,11 +342,13 @@ export default function HorrorFestLandingPage() {
             {/* Single Tier Configuration */}
             <div className="mb-6 p-4 rounded-xl bg-red-950/30 border border-red-500/20 flex justify-between items-center">
               <div>
-                <span className="text-[10px] uppercase text-red-400 font-mono tracking-widest block mb-1">Entrada General</span>
+                <span className="text-[10px] uppercase text-red-400 font-mono tracking-widest block mb-1">
+                  Preventa • Etapa 1
+                </span>
                 <span className="text-white font-black text-sm">Cover BYOB Libre</span>
               </div>
               <div className="text-yellow-500 font-mono font-black text-lg">
-                $200 <span className="text-[10px]">MXN</span>
+                ${tierPrice} <span className="text-[10px]">MXN</span>
               </div>
             </div>
 

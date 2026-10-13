@@ -246,8 +246,8 @@ function initDb(db: DatabaseSync) {
     insertTier.run(
       'tier_terror_001',
       'evt_rodada_terror_2026',
-      'Cover General BYOB (Descorche Libre)',
-      200.0,
+      'Cover General BYOB (Preventa Etapa 1)',
+      150.0,
       400,
       0,
       'Acceso general al Salón Casino + Ingreso de tus propias botellas/bebidas (BYOB) sin cobro extra + Acceso a sorteos y rifas en vivo'
@@ -272,6 +272,17 @@ function initDb(db: DatabaseSync) {
       0,
       'Pase preferente de caravana, estacionamiento privado para motocicleta, acceso hospitality backstage con Vale Queen & DJ Jhonas + Kit biker del terror'
     );
+  }
+
+  // Ensure Preventa Etapa 1 price is 150
+  try {
+    db.prepare(`
+      UPDATE ticket_tiers 
+      SET price = 150.0, name = 'Cover General BYOB (Preventa Etapa 1)'
+      WHERE id = 'tier_terror_001' AND (price = 200.0 OR price != 150.0)
+    `).run();
+  } catch {
+    // Ignore if table/record not yet initialized
   }
 }
 

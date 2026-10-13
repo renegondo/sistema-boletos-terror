@@ -14,7 +14,7 @@
 | **Sede / Venue** | **Salón Casino** |
 | **Fecha / Temporada** | **Domingo 1 de Noviembre de 2026** *(Fin de semana Halloween / Día de Muertos)* |
 | **Formato de Acceso** | Pulseras de seguridad / Control de acceso numerado |
-| **Precio de Entrada (Cover)** | **$200 MXN** |
+| **Precio de Entrada (Cover)** | **$150 MXN** *(Preventa - Etapa 1)* |
 | **Dinámica Especial** | **BYOB (Descorche Libre)**: Los asistentes pueden ingresar sus propias bebidas + acceso a sorteos y sorpresas exclusivas. |
 | **Aforo Esperado** | **300 - 500 personas** *(Cupo limitado / Exclusivo en Salón Casino)* + 600 - 800 motocicletas en rodada previa. |
 | **Público Objetivo** | Jóvenes y adultos jóvenes (18 a 35 años), comunidad biker/motociclista, amantes del género urbano (Trap/Reggaetón/Club) y público fiel de la escena nocturna. |
@@ -68,7 +68,7 @@ El evento cuenta con una combinación de talento con alto alcance digital, shows
 
 ## 4. 🎟️ Experiencia para el Asistente & Dinámica
 
-* **Cover Accesible ($200 MXN):** Excelente relación costo-beneficio para el usuario.
+* **Cover Accesible ($150 MXN en Preventa Etapa 1):** Excelente relación costo-beneficio para el usuario.
 * **Modalidad BYOB (Introduce tus propias bebidas):** Reduce la fricción de consumo y maximiza la asistencia masiva.
 * **Seguridad y Control con Pulseras:** Acceso fluido y seguro para evitar sobrecupo.
 * **Sorteos y Sorpresas:** Dinámicas interactivas durante la noche (rifas de accesorios para motos, botellas, regalos de patrocinadores).

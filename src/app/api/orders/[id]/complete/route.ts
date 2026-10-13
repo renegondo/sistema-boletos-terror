@@ -40,8 +40,8 @@ export async function POST(
     // Parse notes to retrieve tier info if pre-registered
     let tierId = 'tier_terror_001';
     let quantity = 1;
-    let tierName = 'Cover General BYOB';
-    let unitPrice = 200;
+    let tierName = 'Cover General BYOB (Preventa Etapa 1)';
+    let unitPrice = 150;
 
     if (order.notes) {
       try {
@@ -49,7 +49,7 @@ export async function POST(
         if (parsed.tier_id) tierId = parsed.tier_id;
         if (parsed.quantity) quantity = Number(parsed.quantity) || 1;
         if (parsed.tier_name) tierName = parsed.tier_name;
-        if (parsed.price_unit) unitPrice = Number(parsed.price_unit) || 200;
+        if (parsed.price_unit) unitPrice = Number(parsed.price_unit) || 150;
       } catch {
         // Not JSON notes
       }
