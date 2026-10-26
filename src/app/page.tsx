@@ -325,7 +325,7 @@ export default function HorrorFestLandingPage() {
           <div className="hidden sm:block text-red-900/50">|</div>
           <div className="flex items-center gap-2">
             <MapPin className="w-4 h-4 text-red-600" />
-            <span>Salón Casino</span>
+            <span>Salón del Sindicato del IMSS</span>
           </div>
           <div className="hidden sm:block text-red-900/50">|</div>
           <div className="flex items-center gap-2">

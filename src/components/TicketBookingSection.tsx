@@ -37,7 +37,7 @@ const TICKET_TIERS: TicketTierOption[] = [
     badgeColor: 'bg-red-600 text-white',
     recommended: true,
     features: [
-      'Acceso al Salón Casino (After Oficial)',
+      'Acceso al Salón del Sindicato del IMSS (After Oficial)',
       'Modalidad BYOB: Ingresa tus propias botellas/bebidas sin descorche',
       'Acceso a todos los shows: Vale Queen, DJ Jhonas, Dege, etc.',
       'Participación en rifas y dinámicas en vivo',

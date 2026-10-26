@@ -224,7 +224,7 @@ Tus lugares están reservados temporalmente. Para asegurar tus pulseras numerada
 📲 *Envío de Comprobante:*
 Responde a este mensaje con tu captura de pantalla de transferencia citando tu folio *#${params.orderId}*.
 
-⚡ En cuanto el staff valide tu pago en el sistema, recibirás automáticamente aquí en WhatsApp tu **Código QR Oficial Infalsificable** para ingresar al Salón Casino.
+⚡ En cuanto el staff valide tu pago en el sistema, recibirás automáticamente aquí en WhatsApp tu **Código QR Oficial Infalsificable** para ingresar al Salón del Sindicato del IMSS.
 
 ¡Nos vemos en la rodada! 💀🏁`;
 

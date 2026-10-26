@@ -229,8 +229,8 @@ function initDb(db: DatabaseSync) {
     insertEvent.run(
       'evt_rodada_terror_2026',
       'After de Rodada del Terror 2026 - HORROR FEST',
-      'El after oficial más salvaje de la Rodada del Terror 2026 organizado por Flow Productions. Gran fiesta en Salón Casino tras la caravana masiva de 800+ motocicletas. Shows estelares de Vale Queen (@Valequeenoficial), DJ Jhonas (+300k oyentes Spotify), Dege (Trap), Pasatiempo & El Bala, Los Babys (Gogos Show) y DJ Fragot. Modalidad BYOB (Descorche Libre) + Rifas de cascos, accesorios biker y botellas.',
-      'Salón Casino, Ciudad de México',
+      'El after oficial más salvaje de la Rodada del Terror 2026 organizado por Flow Productions. Gran fiesta en Salón del Sindicato del IMSS tras la caravana masiva de 800+ motocicletas. Shows estelares de Vale Queen (@Valequeenoficial), DJ Jhonas (+300k oyentes Spotify), Dege (Trap), Pasatiempo & El Bala, Los Babys (Gogos Show) y DJ Fragot. Modalidad BYOB (Descorche Libre) + Rifas de cascos, accesorios biker y botellas.',
+      'Salón del Sindicato del IMSS, Ciudad de México',
       '2026-11-01',
       '21:00',
       '/images/flyer-rodada-del-terror.jpg',
@@ -250,7 +250,7 @@ function initDb(db: DatabaseSync) {
       150.0,
       400,
       0,
-      'Acceso general al Salón Casino + Ingreso de tus propias botellas/bebidas (BYOB) sin cobro extra + Acceso a sorteos y rifas en vivo'
+      'Acceso general al Salón del Sindicato del IMSS + Ingreso de tus propias botellas/bebidas (BYOB) sin cobro extra + Acceso a sorteos y rifas en vivo'
     );
 
     insertTier.run(
