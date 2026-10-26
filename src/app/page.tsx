@@ -232,12 +232,12 @@ export default function HorrorFestLandingPage() {
           </div>
 
           {/* Emblem / Date Location Badge */}
-          <div className="relative z-20 -mt-8 sm:-mt-12 w-[90%] max-w-[400px] hover:scale-105 transition-transform duration-500 drop-shadow-[0_0_30px_rgba(220,38,38,0.5)]">
+          <div className="relative z-20 -mt-8 sm:-mt-12 w-[90%] max-w-[500px] hover:scale-105 transition-transform duration-500 drop-shadow-[0_0_30px_rgba(220,38,38,0.5)]">
             <Image 
-              src="/images/fecha-lugar.png" 
-              alt="Domingo 1 Nov 2026 - Salon Casino" 
-              width={400}
-              height={120}
+              src="/images/domingo-sangriento-1-nov-2026.png" 
+              alt="Domingo Sangriento - 1 Nov 2026" 
+              width={1448}
+              height={1086}
               priority
               style={{ width: '100%', height: 'auto' }}
               className="object-contain"
