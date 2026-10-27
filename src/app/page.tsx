@@ -278,7 +278,7 @@ export default function HorrorFestLandingPage() {
                   Show Urbano & Trap
                 </span>
                 <div className="text-xl sm:text-2xl font-black text-slate-200 uppercase tracking-tight flex flex-wrap justify-center items-center gap-x-4 gap-y-1">
-                  <span className="hover:text-red-400 transition-colors">Dege</span>
+                  <span className="hover:text-red-400 transition-colors">DG</span>
                   <span className="text-red-900 text-sm">/</span>
                   <span className="hover:text-red-400 transition-colors">Pasatiempo</span>
                   <span className="text-red-900 text-sm">/</span>
@@ -297,6 +297,8 @@ export default function HorrorFestLandingPage() {
                   <span className="hover:text-red-400 transition-colors">DJ Fragot</span>
                   <span className="text-red-900 text-sm">/</span>
                   <span className="hover:text-red-400 transition-colors text-yellow-500 font-mono">DJ Koy</span>
+                  <span className="text-red-900 text-sm">/</span>
+                  <span className="hover:text-red-400 transition-colors text-yellow-500 font-mono">DJ Gato</span>
                   <span className="text-red-900 text-sm">/</span>
                   <span className="flex items-center gap-2">
                     Los Babys
