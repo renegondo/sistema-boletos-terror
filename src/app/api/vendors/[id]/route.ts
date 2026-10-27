@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getDb } from '@/lib/db';
+import { supabase } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
 import bcrypt from 'bcryptjs';
 
@@ -17,33 +17,20 @@ export async function PUT(
     const body = await request.json();
     const { name, phone, commission_type, commission_rate, is_active, password } = body;
 
-    const db = getDb();
-
+    const updates: Record<string, any> = {};
+    if (name?.trim()) updates.name = name.trim();
+    if (phone !== undefined) updates.phone = phone?.trim() || null;
+    if (commission_type) updates.commission_type = commission_type;
+    if (commission_rate !== undefined) updates.commission_rate = Number(commission_rate);
+    if (is_active !== undefined) updates.is_active = Number(is_active);
     if (password && password.trim()) {
-      const passwordHash = bcrypt.hashSync(password.trim(), 10);
-      const updatePass = db.prepare('UPDATE users SET password_hash = ? WHERE id = ?');
-      updatePass.run(passwordHash, id);
+      updates.password_hash = bcrypt.hashSync(password.trim(), 10);
     }
 
-    const updateStmt = db.prepare(`
-      UPDATE users 
-      SET 
-        name = COALESCE(?, name),
-        phone = COALESCE(?, phone),
-        commission_type = COALESCE(?, commission_type),
-        commission_rate = COALESCE(?, commission_rate),
-        is_active = COALESCE(?, is_active)
-      WHERE id = ?
-    `);
-
-    updateStmt.run(
-      name?.trim() || null,
-      phone?.trim() || null,
-      commission_type || null,
-      commission_rate !== undefined ? Number(commission_rate) : null,
-      is_active !== undefined ? Number(is_active) : null,
-      id
-    );
+    if (Object.keys(updates).length > 0) {
+      const { error } = await supabase.from('users').update(updates).eq('id', id);
+      if (error) throw error;
+    }
 
     return NextResponse.json({ success: true, message: 'Vendedor actualizado con éxito' });
   } catch (error: any) {

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getDb } from '@/lib/db';
+import { supabase } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
 
 export async function POST(
@@ -13,25 +13,15 @@ export async function POST(
     }
 
     const { code } = await params;
-    const db = getDb();
+    const cleanCode = code.toUpperCase().trim();
 
-    const findStmt = db.prepare(`
-      SELECT 
-        t.*,
-        e.title as event_title,
-        tt.name as tier_name,
-        o.status as order_status,
-        o.id as order_id
-      FROM tickets t
-      JOIN events e ON t.event_id = e.id
-      JOIN ticket_tiers tt ON t.tier_id = tt.id
-      JOIN orders o ON t.order_id = o.id
-      WHERE t.ticket_code = ? OR t.id = ?
-    `);
+    const { data: ticket, error } = await supabase
+      .from('tickets')
+      .select('*, events(title), ticket_tiers(name), orders(id, status)')
+      .or(`ticket_code.eq.${cleanCode},id.eq.${cleanCode}`)
+      .single();
 
-    const ticket = findStmt.get(code.toUpperCase().trim(), code) as any;
-
-    if (!ticket) {
+    if (error || !ticket) {
       return NextResponse.json({
         success: false,
         valid: false,
@@ -39,14 +29,15 @@ export async function POST(
       }, { status: 404 });
     }
 
-    if (ticket.order_status === 'pending') {
+    const order = ticket.orders;
+    if (order?.status === 'pending') {
       return NextResponse.json({
         success: false,
         valid: false,
         status: 'pending_payment',
         message: `⚠️ BOLETO PENDIENTE DE PAGO ⚠️\nCobrar: $${ticket.price} MXN`,
         ticket,
-        orderId: ticket.order_id,
+        orderId: order.id,
       }, { status: 402 });
     }
 
@@ -65,28 +56,31 @@ export async function POST(
         success: false,
         valid: false,
         status: 'cancelled',
-        message: 'Este boleto fue cancelado o reembolsado',
+        message: 'Este boleto está CANCELADO o revocado',
         ticket,
-      }, { status: 400 });
+      }, { status: 410 });
     }
 
-    // Mark as used
     const now = new Date().toISOString();
-    const updateStmt = db.prepare("UPDATE tickets SET status = 'used', used_at = ? WHERE id = ?");
-    updateStmt.run(now, ticket.id);
+    await supabase
+      .from('tickets')
+      .update({ status: 'used', used_at: now })
+      .eq('id', ticket.id);
 
     return NextResponse.json({
       success: true,
       valid: true,
-      status: 'valid_and_checked_in',
-      message: `¡ACCESO AUTORIZADO! Bienvenido, ${ticket.attendee_name} (${ticket.tier_name})`,
+      status: 'valid_checked_in',
+      message: '✅ ACCESO AUTORIZADO - Bienvenido a Horror Fest 2026',
       ticket: {
         ...ticket,
         status: 'used',
         used_at: now,
+        validator_name: user.name,
       },
     });
   } catch (error: any) {
+    console.error('Error checking in ticket:', error);
     return NextResponse.json({ error: error.message || 'Error al validar boleto' }, { status: 500 });
   }
 }

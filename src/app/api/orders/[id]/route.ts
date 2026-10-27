@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getDb } from '@/lib/db';
+import { supabase } from '@/lib/db';
 
 export async function GET(
   request: Request,
@@ -7,35 +7,41 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const db = getDb();
 
-    const orderStmt = db.prepare(`
-      SELECT 
-        o.*,
-        e.title as event_title,
-        e.event_date,
-        e.event_time,
-        e.location,
-        e.banner_url
-      FROM orders o
-      JOIN events e ON o.event_id = e.id
-      WHERE o.id = ?
-    `);
+    const { data: order, error } = await supabase
+      .from('orders')
+      .select('*, events(title, event_date, event_time, location, banner_url)')
+      .eq('id', id)
+      .single();
 
-    const order = orderStmt.get(id) as any;
-    if (!order) {
+    if (error || !order) {
       return NextResponse.json({ error: 'Orden no encontrada' }, { status: 404 });
     }
 
-    const ticketsStmt = db.prepare(`
-      SELECT t.*, tt.name as tier_name
-      FROM tickets t
-      LEFT JOIN ticket_tiers tt ON t.tier_id = tt.id
-      WHERE t.order_id = ?
-    `);
-    const tickets = ticketsStmt.all(id);
+    const { data: tickets } = await supabase
+      .from('tickets')
+      .select('*')
+      .eq('order_id', id);
 
-    return NextResponse.json({ order, tickets });
+    const { data: allTiers } = await supabase.from('ticket_tiers').select('id, name');
+    const tierMap = new Map((allTiers || []).map((t) => [t.id, t.name]));
+
+    const enrichedTickets = (tickets || []).map((t) => ({
+      ...t,
+      tier_name: tierMap.get(t.tier_id) || 'Boleto',
+    }));
+
+    const event = order.events;
+    const formattedOrder = {
+      ...order,
+      event_title: event?.title || 'Horror Fest',
+      event_date: event?.event_date || '2026-11-01',
+      event_time: event?.event_time || '21:00',
+      location: event?.location || 'Salón del Sindicato del IMSS',
+      banner_url: event?.banner_url || null,
+    };
+
+    return NextResponse.json({ order: formattedOrder, tickets: enrichedTickets });
   } catch (error: any) {
     console.error('Error fetching order by ID:', error);
     return NextResponse.json({ error: error.message || 'Error al obtener orden' }, { status: 500 });

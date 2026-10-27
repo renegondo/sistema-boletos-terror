@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getDb } from '@/lib/db';
+import { supabase } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
 
 export async function GET() {
@@ -9,11 +9,11 @@ export async function GET() {
       return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
     }
 
-    const db = getDb();
-    const rows = db.prepare('SELECT key, value FROM settings').all() as any[];
+    const { data: rows, error } = await supabase.from('settings').select('*');
+    if (error) throw error;
 
     const settings: Record<string, string> = {};
-    for (const row of rows) {
+    for (const row of rows || []) {
       settings[row.key] = row.value;
     }
 
@@ -31,13 +31,17 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const db = getDb();
-    const upsert = db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)');
+    const updates = [];
 
     for (const [key, value] of Object.entries(body)) {
       if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
-        upsert.run(key, String(value));
+        updates.push({ key, value: String(value) });
       }
+    }
+
+    if (updates.length > 0) {
+      const { error } = await supabase.from('settings').upsert(updates);
+      if (error) throw error;
     }
 
     return NextResponse.json({ success: true, message: 'Configuración guardada correctamente' });

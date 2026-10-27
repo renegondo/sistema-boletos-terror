@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getDb } from '@/lib/db';
+import { supabase } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
 import crypto from 'node:crypto';
 
@@ -8,31 +8,29 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');
 
-    const db = getDb();
-    let query = 'SELECT * FROM events';
-    const params: any[] = [];
-
+    let query = supabase.from('events').select('*');
     if (status) {
-      query += ' WHERE status = ?';
-      params.push(status);
+      query = query.eq('status', status);
     }
-    query += ' ORDER BY event_date ASC, created_at DESC';
+    query = query.order('event_date', { ascending: true });
 
-    const eventsStmt = db.prepare(query);
-    const events = (params.length ? eventsStmt.all(...params) : eventsStmt.all()) as any[];
+    const { data: events, error } = await query;
+    if (error) throw error;
 
-    // Fetch tiers and sales stats for each event
-    const tierStmt = db.prepare('SELECT * FROM ticket_tiers WHERE event_id = ? ORDER BY price ASC');
-    const statsStmt = db.prepare('SELECT COUNT(*) as total_tickets, COALESCE(SUM(total_amount), 0) as total_revenue FROM orders WHERE event_id = ?');
+    const { data: allTiers } = await supabase.from('ticket_tiers').select('*').order('price', { ascending: true });
+    const { data: allOrders } = await supabase.from('orders').select('event_id, total_amount');
 
-    const enrichedEvents = events.map((event) => {
-      const tiers = tierStmt.all(event.id) as any[];
-      const stats = statsStmt.get(event.id) as any;
+    const enrichedEvents = (events || []).map((event) => {
+      const eventTiers = (allTiers || []).filter((t) => t.event_id === event.id);
+      const eventOrders = (allOrders || []).filter((o) => o.event_id === event.id);
+
+      const totalRevenue = eventOrders.reduce((sum, o) => sum + (Number(o.total_amount) || 0), 0);
+
       return {
         ...event,
-        tiers,
-        total_sold: stats?.total_tickets || 0,
-        total_revenue: stats?.total_revenue || 0,
+        tiers: eventTiers,
+        total_sold: eventOrders.length,
+        total_revenue: totalRevenue,
       };
     });
 
@@ -61,47 +59,38 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Debes definir al menos un tipo de boleto' }, { status: 400 });
     }
 
-    const db = getDb();
     const eventId = `evt_${Date.now()}_${crypto.randomBytes(3).toString('hex')}`;
-    const now = new Date().toISOString();
 
-    const insertEvent = db.prepare(`
-      INSERT INTO events (id, title, description, location, event_date, event_time, banner_url, status, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, 'active', ?)
-    `);
-
-    insertEvent.run(
-      eventId,
-      title.trim(),
-      description?.trim() || '',
-      location.trim(),
+    const { error: eventError } = await supabase.from('events').insert({
+      id: eventId,
+      title,
+      description: description || null,
+      location,
       event_date,
       event_time,
-      banner_url || 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=1200&q=80',
-      now
-    );
+      banner_url: banner_url || null,
+      status: 'active',
+    });
 
-    const insertTier = db.prepare(`
-      INSERT INTO ticket_tiers (id, event_id, name, price, capacity, sold_count, description)
-      VALUES (?, ?, ?, ?, ?, 0, ?)
-    `);
+    if (eventError) throw eventError;
 
     for (const tier of tiers) {
       const tierId = `tier_${Date.now()}_${crypto.randomBytes(3).toString('hex')}`;
-      insertTier.run(
-        tierId,
-        eventId,
-        tier.name.trim(),
-        Number(tier.price) || 0,
-        Number(tier.capacity) || 100,
-        tier.description || ''
-      );
+      await supabase.from('ticket_tiers').insert({
+        id: tierId,
+        event_id: eventId,
+        name: tier.name,
+        price: Number(tier.price) || 0,
+        capacity: Number(tier.capacity) || 100,
+        sold_count: 0,
+        description: tier.description || null,
+      });
     }
 
     return NextResponse.json({
       success: true,
-      eventId,
       message: 'Evento creado exitosamente',
+      eventId,
     });
   } catch (error: any) {
     console.error('Error creating event:', error);

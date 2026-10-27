@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getDb } from '@/lib/db';
+import { supabase } from '@/lib/db';
 import { signToken, COOKIE_NAME } from '@/lib/auth';
 import bcrypt from 'bcryptjs';
 
@@ -14,11 +14,15 @@ export async function POST(request: Request) {
       );
     }
 
-    const db = getDb();
-    const stmt = db.prepare('SELECT * FROM users WHERE email = ? AND is_active = 1');
-    const user = stmt.get(email.toLowerCase().trim()) as any;
+    const cleanEmail = email.toLowerCase().trim();
+    const { data: user, error } = await supabase
+      .from('users')
+      .select('*')
+      .eq('email', cleanEmail)
+      .eq('is_active', 1)
+      .single();
 
-    if (!user) {
+    if (error || !user) {
       return NextResponse.json(
         { error: 'Credenciales inválidas o usuario inactivo' },
         { status: 401 }
@@ -64,6 +68,9 @@ export async function POST(request: Request) {
     return response;
   } catch (error: any) {
     console.error('Login error:', error);
-    return NextResponse.json({ error: error.message || 'Error en el servidor' }, { status: 500 });
+    return NextResponse.json(
+      { error: error.message || 'Error interno en autenticación' },
+      { status: 500 }
+    );
   }
 }

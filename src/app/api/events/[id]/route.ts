@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getDb } from '@/lib/db';
+import { supabase } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
 import crypto from 'node:crypto';
 
@@ -9,39 +9,48 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const db = getDb();
 
-    const eventStmt = db.prepare('SELECT * FROM events WHERE id = ?');
-    const event = eventStmt.get(id) as any;
+    const { data: event, error: eventError } = await supabase
+      .from('events')
+      .select('*')
+      .eq('id', id)
+      .single();
 
-    if (!event) {
+    if (eventError || !event) {
       return NextResponse.json({ error: 'Evento no encontrado' }, { status: 404 });
     }
 
-    if (id === 'evt_rodada_terror_2026') {
-      try {
-        db.prepare("UPDATE ticket_tiers SET price = 150.0, name = 'Cover General BYOB (Preventa Etapa 1)' WHERE id = 'tier_terror_001' AND (price = 200.0 OR price != 150.0)").run();
-      } catch {}
+    const { data: tiers } = await supabase
+      .from('ticket_tiers')
+      .select('*')
+      .eq('event_id', id)
+      .order('price', { ascending: true });
+
+    const { data: orders } = await supabase
+      .from('orders')
+      .select('total_amount, vendor_commission_amount')
+      .eq('event_id', id);
+
+    let totalOrders = orders?.length || 0;
+    let totalRevenue = 0;
+    let totalCommissions = 0;
+
+    if (orders) {
+      for (const ord of orders) {
+        totalRevenue += Number(ord.total_amount) || 0;
+        totalCommissions += Number(ord.vendor_commission_amount) || 0;
+      }
     }
-
-    const tierStmt = db.prepare('SELECT * FROM ticket_tiers WHERE event_id = ? ORDER BY price ASC');
-    const tiers = tierStmt.all(id) as any[];
-
-    const salesStmt = db.prepare(`
-      SELECT 
-        COUNT(*) as total_orders,
-        COALESCE(SUM(total_amount), 0) as total_revenue,
-        COALESCE(SUM(vendor_commission_amount), 0) as total_commissions
-      FROM orders 
-      WHERE event_id = ?
-    `);
-    const stats = salesStmt.get(id) as any;
 
     return NextResponse.json({
       event: {
         ...event,
-        tiers,
-        stats,
+        tiers: tiers || [],
+        stats: {
+          total_orders: totalOrders,
+          total_revenue: totalRevenue,
+          total_commissions: totalCommissions,
+        },
       },
     });
   } catch (error: any) {
@@ -61,99 +70,61 @@ export async function PUT(
 
     const { id } = await params;
     const body = await request.json();
-    const { title, description, location, event_date, event_time, banner_url, status = 'active', tiers } = body;
+    const { title, description, location, event_date, event_time, banner_url, status, tiers } = body;
 
-    if (!title || !location || !event_date || !event_time) {
-      return NextResponse.json({ error: 'Título, ubicación, fecha y hora son obligatorios' }, { status: 400 });
+    const updates: Record<string, any> = {};
+    if (title) updates.title = title;
+    if (description !== undefined) updates.description = description;
+    if (location) updates.location = location;
+    if (event_date) updates.event_date = event_date;
+    if (event_time) updates.event_time = event_time;
+    if (banner_url !== undefined) updates.banner_url = banner_url;
+    if (status) updates.status = status;
+
+    if (Object.keys(updates).length > 0) {
+      const { error: updateError } = await supabase
+        .from('events')
+        .update(updates)
+        .eq('id', id);
+
+      if (updateError) throw updateError;
     }
 
-    const db = getDb();
-
-    // Update event record
-    const updateEvent = db.prepare(`
-      UPDATE events 
-      SET 
-        title = ?,
-        description = ?,
-        location = ?,
-        event_date = ?,
-        event_time = ?,
-        banner_url = ?,
-        status = ?
-      WHERE id = ?
-    `);
-
-    updateEvent.run(
-      title.trim(),
-      description?.trim() || '',
-      location.trim(),
-      event_date,
-      event_time,
-      banner_url || null,
-      status,
-      id
-    );
-
-    // Update / insert tiers if provided
-    if (tiers && Array.isArray(tiers) && tiers.length > 0) {
-      const existingTiersStmt = db.prepare('SELECT id, sold_count FROM ticket_tiers WHERE event_id = ?');
-      const existingTiers = existingTiersStmt.all(id) as Array<{ id: string; sold_count: number }>;
-      const existingIds = new Set(existingTiers.map(t => t.id));
-
-      const insertTier = db.prepare(`
-        INSERT INTO ticket_tiers (id, event_id, name, price, capacity, sold_count, description)
-        VALUES (?, ?, ?, ?, ?, 0, ?)
-      `);
-
-      const updateTier = db.prepare(`
-        UPDATE ticket_tiers
-        SET name = ?, price = ?, capacity = ?, description = ?
-        WHERE id = ? AND event_id = ?
-      `);
-
-      const keptIds = new Set<string>();
-
+    // Update tiers if provided
+    if (tiers && Array.isArray(tiers)) {
       for (const tier of tiers) {
-        if (tier.id && existingIds.has(tier.id)) {
-          updateTier.run(
-            tier.name.trim(),
-            Number(tier.price) || 0,
-            Number(tier.capacity) || 100,
-            tier.description || '',
-            tier.id,
-            id
-          );
-          keptIds.add(tier.id);
+        if (tier.id) {
+          await supabase
+            .from('ticket_tiers')
+            .update({
+              name: tier.name,
+              price: Number(tier.price),
+              capacity: Number(tier.capacity),
+              description: tier.description,
+            })
+            .eq('id', tier.id);
         } else {
-          const newTierId = `tier_${Date.now()}_${crypto.randomBytes(3).toString('hex')}`;
-          insertTier.run(
-            newTierId,
-            id,
-            tier.name.trim(),
-            Number(tier.price) || 0,
-            Number(tier.capacity) || 100,
-            tier.description || ''
-          );
-          keptIds.add(newTierId);
-        }
-      }
-
-      // Delete removed tiers that have 0 sales
-      const deleteTier = db.prepare('DELETE FROM ticket_tiers WHERE id = ? AND event_id = ? AND sold_count = 0');
-      for (const t of existingTiers) {
-        if (!keptIds.has(t.id) && t.sold_count === 0) {
-          deleteTier.run(t.id, id);
+          const tierId = `tier_${Date.now()}_${crypto.randomBytes(3).toString('hex')}`;
+          await supabase
+            .from('ticket_tiers')
+            .insert({
+              id: tierId,
+              event_id: id,
+              name: tier.name,
+              price: Number(tier.price),
+              capacity: Number(tier.capacity),
+              sold_count: 0,
+              description: tier.description,
+            });
         }
       }
     }
 
     return NextResponse.json({ success: true, message: 'Evento actualizado correctamente' });
   } catch (error: any) {
-    console.error('Error updating event:', error);
     return NextResponse.json({ error: error.message || 'Error al actualizar evento' }, { status: 500 });
   }
 }
-
 
 export async function DELETE(
   _request: Request,
@@ -162,19 +133,14 @@ export async function DELETE(
   try {
     const user = await getCurrentUser();
     if (!user || user.role !== 'admin') {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
+      return NextResponse.json({ error: 'Solo administradores pueden eliminar eventos' }, { status: 403 });
     }
 
     const { id } = await params;
-    const db = getDb();
+    const { error } = await supabase.from('events').delete().eq('id', id);
+    if (error) throw error;
 
-    // Cascade delete associated records
-    db.prepare('DELETE FROM tickets WHERE event_id = ?').run(id);
-    db.prepare('DELETE FROM orders WHERE event_id = ?').run(id);
-    db.prepare('DELETE FROM ticket_tiers WHERE event_id = ?').run(id);
-    db.prepare('DELETE FROM events WHERE id = ?').run(id);
-
-    return NextResponse.json({ success: true, message: 'Evento eliminado exitosamente' });
+    return NextResponse.json({ success: true, message: 'Evento eliminado correctamente' });
   } catch (error: any) {
     return NextResponse.json({ error: error.message || 'Error al eliminar evento' }, { status: 500 });
   }

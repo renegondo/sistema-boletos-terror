@@ -1,5 +1,3 @@
-import { getDb } from './db';
-
 export interface EvolutionConfig {
   apiUrl: string;
   apiKey: string;
@@ -8,23 +6,16 @@ export interface EvolutionConfig {
 }
 
 export function getEvolutionConfig(): EvolutionConfig {
-  const db = getDb();
-  const getSetting = db.prepare('SELECT value FROM settings WHERE key = ?');
-
-  const urlRow = getSetting.get('evolution_api_url') as { value: string } | undefined;
-  const keyRow = getSetting.get('evolution_api_key') as { value: string } | undefined;
-  const instanceRow = getSetting.get('evolution_instance_name') as { value: string } | undefined;
-  const autoSendRow = getSetting.get('whatsapp_auto_send') as { value: string } | undefined;
-
-  const apiUrl = process.env.EVOLUTION_API_URL || (urlRow?.value && urlRow.value !== 'http://localhost:8080' ? urlRow.value : 'https://api.bebot.click');
-  const apiKey = process.env.EVOLUTION_API_KEY || (keyRow?.value && keyRow.value !== 'TU_API_KEY_AQUI' && keyRow.value !== 'lJkzchqWmDn9ZNyuKaQRogOFVOvCwhGfXARtIG9e9pv9WZsbjoRqo' ? keyRow.value : 'NKofAZi4Gov+lJkzchqWmDn9ZNyuKaQRogOFVOvCwhGfXARtIG9e9pv9WZsbjoRqo/NEo777aEfEWp2CJvW3Rw==');
-  const instanceName = process.env.EVOLUTION_INSTANCE_NAME || (instanceRow?.value && instanceRow.value !== 'boletos_instance' ? instanceRow.value : 'ayuntamiento');
+  const apiUrl = process.env.EVOLUTION_API_URL || 'https://api.bebot.click';
+  const apiKey = process.env.EVOLUTION_API_KEY || 'NKofAZi4Gov+lJkzchqWmDn9ZNyuKaQRogOFVOvCwhGfXARtIG9e9pv9WZsbjoRqo/NEo777aEfEWp2CJvW3Rw==';
+  const instanceName = process.env.EVOLUTION_INSTANCE_NAME || 'ayuntamiento';
+  const autoSend = process.env.WHATSAPP_AUTO_SEND !== '0';
 
   return {
     apiUrl: apiUrl.replace(/\/+$/, ''),
     apiKey: apiKey,
     instanceName: instanceName,
-    autoSend: autoSendRow ? autoSendRow.value === '1' : true,
+    autoSend: autoSend,
   };
 }
 

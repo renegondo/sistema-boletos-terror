@@ -8,12 +8,14 @@
     "start": "next start -H 0.0.0.0 -p 3000"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.118.0",
     "bcryptjs": "^3.0.3",
     "clsx": "^2.1.1",
     "html5-qrcode": "^2.3.8",
     "jsonwebtoken": "^9.0.3",
     "lucide-react": "^1.52.0",
     "next": "^16.4.0",
+    "postgres": "^3.4.9",
     "qrcode": "^1.5.4",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",

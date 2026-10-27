@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getDb } from '@/lib/db';
+import { supabase } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
 import { generateTicketPngBase64 } from '@/lib/ticket-generator';
 import { sendTicketViaWhatsApp, getEvolutionConfig } from '@/lib/evolution';
@@ -20,7 +20,7 @@ export async function POST(request: Request) {
       customerEmail,
       paymentMethod = 'cash',
       items, // [{ tierId, quantity, attendeeNames: [] }]
-      clientTicketImages = {}, // optional base64 tickets from canvas
+      clientTicketImages = {},
     } = body;
 
     if (!eventId || !customerName || !customerPhone || !items || !Array.isArray(items) || items.length === 0) {
@@ -30,222 +30,178 @@ export async function POST(request: Request) {
       );
     }
 
-    const db = getDb();
-
-    // Verify event
-    const eventStmt = db.prepare('SELECT * FROM events WHERE id = ?');
-    const event = eventStmt.get(eventId) as any;
+    const { data: event } = await supabase.from('events').select('*').eq('id', eventId).single();
     if (!event) {
       return NextResponse.json({ error: 'Evento no encontrado' }, { status: 404 });
     }
 
-    // Get vendor details (re-fetch to get freshest commission rates)
-    const vendorStmt = db.prepare('SELECT * FROM users WHERE id = ?');
-    const vendor = (vendorStmt.get(user.id) as any) || user;
+    const { data: vendorData } = await supabase.from('users').select('*').eq('id', user.id).single();
+    const vendor = vendorData || user;
 
     const commissionType = vendor.commission_type || 'percentage';
     const commissionRate = Number(vendor.commission_rate) || 0;
 
-    // Calculate totals & validate capacity
     let totalTickets = 0;
     let totalAmount = 0;
     const tierDataMap: Record<string, any> = {};
 
     for (const item of items) {
-      const tierStmt = db.prepare('SELECT * FROM ticket_tiers WHERE id = ? AND event_id = ?');
-      const tier = tierStmt.get(item.tierId, eventId) as any;
+      const { data: tier } = await supabase
+        .from('ticket_tiers')
+        .select('*')
+        .eq('id', item.tierId)
+        .eq('event_id', eventId)
+        .single();
 
       if (!tier) {
         return NextResponse.json({ error: `Tipo de boleto no válido: ${item.tierId}` }, { status: 400 });
       }
 
-      if (tier.sold_count + item.quantity > tier.capacity) {
-        return NextResponse.json(
-          { error: `Cupo insuficiente para "${tier.name}". Disponibles: ${tier.capacity - tier.sold_count}` },
-          { status: 400 }
-        );
-      }
-
       tierDataMap[item.tierId] = tier;
-      totalTickets += item.quantity;
-      totalAmount += tier.price * item.quantity;
+      const qty = Number(item.quantity) || 1;
+      totalTickets += qty;
+      totalAmount += Number(tier.price) * qty;
     }
 
-    // Calculate vendor commission
-    let commissionAmount = 0;
+    let vendorCommissionAmount = 0;
     if (commissionType === 'percentage') {
-      commissionAmount = (totalAmount * commissionRate) / 100;
+      vendorCommissionAmount = (totalAmount * commissionRate) / 100;
     } else {
-      // Fixed commission per ticket
-      commissionAmount = commissionRate * totalTickets;
+      vendorCommissionAmount = commissionRate * totalTickets;
     }
 
-    const orderId = `ORD-${Date.now().toString(36).toUpperCase()}-${crypto.randomBytes(2).toString('hex').toUpperCase()}`;
-    const now = new Date().toISOString();
+    const orderId = `ord_pos_${Date.now()}_${crypto.randomBytes(3).toString('hex')}`;
+    const cleanPhone = customerPhone.replace(/[^\d]/g, '');
 
-    // Insert Order
-    const insertOrder = db.prepare(`
-      INSERT INTO orders (
-        id, event_id, vendor_id, customer_name, customer_phone, customer_email,
-        payment_method, total_amount, vendor_commission_amount,
-        commission_type_applied, commission_rate_applied, status,
-        whatsapp_status, created_at
-      )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'completed', 'pending', ?)
-    `);
+    const { error: orderError } = await supabase.from('orders').insert({
+      id: orderId,
+      event_id: eventId,
+      vendor_id: user.id,
+      customer_name: customerName.trim(),
+      customer_phone: cleanPhone,
+      customer_email: customerEmail?.trim() || null,
+      payment_method: paymentMethod,
+      total_amount: totalAmount,
+      vendor_commission_amount: vendorCommissionAmount,
+      commission_type_applied: commissionType,
+      commission_rate_applied: commissionRate,
+      status: 'completed',
+      whatsapp_status: 'pending',
+    });
 
-    insertOrder.run(
-      orderId,
-      eventId,
-      vendor.id,
-      customerName.trim(),
-      customerPhone.trim(),
-      customerEmail?.trim() || null,
-      paymentMethod,
-      totalAmount,
-      commissionAmount,
-      commissionType,
-      commissionRate,
-      now
-    );
+    if (orderError) throw orderError;
 
-    // Create individual tickets
-    const createdTickets: any[] = [];
-    const insertTicket = db.prepare(`
-      INSERT INTO tickets (
-        id, ticket_code, order_id, tier_id, event_id, attendee_name,
-        price, qr_data, status, created_at
-      )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'valid', ?)
-    `);
-
-    const updateTierSold = db.prepare(`
-      UPDATE ticket_tiers SET sold_count = sold_count + ? WHERE id = ?
-    `);
-
+    const createdTickets = [];
     let ticketIndex = 0;
+
     for (const item of items) {
       const tier = tierDataMap[item.tierId];
-      updateTierSold.run(item.quantity, tier.id);
+      const qty = Number(item.quantity) || 1;
+      const attendeeNames = Array.isArray(item.attendeeNames) ? item.attendeeNames : [];
 
-      for (let i = 0; i < item.quantity; i++) {
-        const ticketId = `tkt_${Date.now()}_${crypto.randomBytes(3).toString('hex')}`;
-        const ticketCode = `TKT-${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
-        const attendeeName =
-          (item.attendeeNames && item.attendeeNames[i]?.trim()) ||
-          `${customerName}${item.quantity > 1 ? ` (#${i + 1})` : ''}`;
+      for (let i = 0; i < qty; i++) {
+        ticketIndex++;
+        const ticketId = `tkt_${Date.now()}_${ticketIndex}_${crypto.randomBytes(3).toString('hex')}`;
+        const codeSuffix = crypto.randomBytes(3).toString('hex').toUpperCase();
+        const ticketCode = `HF26-${codeSuffix}`;
+        const attendee = (attendeeNames[i] && attendeeNames[i].trim()) || customerName.trim();
 
         const qrData = JSON.stringify({
-          c: ticketCode,
-          e: eventId,
-          o: orderId,
+          code: ticketCode,
+          event: event.title,
+          attendee,
+          order: orderId,
         });
-
-        insertTicket.run(
-          ticketId,
-          ticketCode,
-          orderId,
-          tier.id,
-          eventId,
-          attendeeName,
-          tier.price,
-          qrData,
-          now
-        );
 
         createdTickets.push({
           id: ticketId,
           ticket_code: ticketCode,
-          attendee_name: attendeeName,
-          price: tier.price,
-          tier_name: tier.name,
-          ticket_index: ticketIndex,
+          order_id: orderId,
+          tier_id: tier.id,
+          event_id: eventId,
+          attendee_name: attendee,
+          price: Number(tier.price),
+          qr_data: qrData,
+          status: 'valid',
         });
-
-        ticketIndex++;
       }
+
+      await supabase
+        .from('ticket_tiers')
+        .update({ sold_count: (Number(tier.sold_count) || 0) + qty })
+        .eq('id', tier.id);
     }
 
-    // Try Evolution API WhatsApp Dispatch
-    const evolutionConfig = getEvolutionConfig();
-    let whatsappResults: { success: boolean; error?: string }[] = [];
-    let overallWhatsappStatus: 'sent' | 'failed' | 'pending' = 'pending';
-    let whatsappErrorMessage = '';
+    const { data: insertedTickets, error: tktError } = await supabase
+      .from('tickets')
+      .insert(createdTickets)
+      .select();
 
-    if (evolutionConfig.autoSend && evolutionConfig.apiKey && evolutionConfig.instanceName) {
-      for (const tkt of createdTickets) {
+    if (tktError) throw tktError;
+
+    // Dispatch WhatsApp
+    const evoConfig = getEvolutionConfig();
+    let whatsappSent = false;
+
+    if (evoConfig.autoSend) {
+      (async () => {
         try {
-          // Check if client supplied a high-res canvas PNG data URL for this ticket
-          let ticketImage = clientTicketImages[tkt.ticket_code] || clientTicketImages[tkt.id];
+          for (const tkt of insertedTickets || createdTickets) {
+            const tier = tierDataMap[tkt.tier_id];
+            let pngBase64 = clientTicketImages[tkt.ticket_code];
+            if (!pngBase64) {
+              pngBase64 = await generateTicketPngBase64({
+                ticketCode: tkt.ticket_code,
+                eventTitle: event.title,
+                eventDate: event.event_date,
+                eventTime: event.event_time,
+                location: event.location,
+                tierName: tier.name,
+                price: tkt.price,
+                attendeeName: tkt.attendee_name,
+                orderId,
+              });
+            }
 
-          // If no client image, generate high-resolution PNG Base64
-          if (!ticketImage) {
-            ticketImage = await generateTicketPngBase64({
-              ticketCode: tkt.ticket_code,
+            await sendTicketViaWhatsApp({
+              phone: cleanPhone,
+              attendeeName: customerName.trim(),
               eventTitle: event.title,
               eventDate: event.event_date,
               eventTime: event.event_time,
               location: event.location,
-              tierName: tkt.tier_name,
+              ticketCode: tkt.ticket_code,
+              tierName: tier.name,
               price: tkt.price,
-              attendeeName: tkt.attendee_name,
-              orderId,
+              imageBase64OrUrl: pngBase64,
             });
           }
 
-          const sendResult = await sendTicketViaWhatsApp({
-            phone: customerPhone,
-            ticketCode: tkt.ticket_code,
-            attendeeName: tkt.attendee_name,
-            eventTitle: event.title,
-            eventDate: event.event_date,
-            eventTime: event.event_time,
-            location: event.location,
-            tierName: tkt.tier_name,
-            price: tkt.price,
-            imageBase64OrUrl: ticketImage,
-          });
-
-          whatsappResults.push(sendResult);
-          if (!sendResult.success) {
-            whatsappErrorMessage = sendResult.error || 'Error al enviar por WhatsApp';
-          }
+          await supabase
+            .from('orders')
+            .update({ whatsapp_status: 'sent', whatsapp_error: null })
+            .eq('id', orderId);
         } catch (err: any) {
-          whatsappResults.push({ success: false, error: err.message });
-          whatsappErrorMessage = err.message;
+          console.error('POS WhatsApp error:', err);
+          await supabase
+            .from('orders')
+            .update({ whatsapp_status: 'failed', whatsapp_error: err?.message || 'Error al enviar WhatsApp' })
+            .eq('id', orderId);
         }
-      }
-
-      const anySuccess = whatsappResults.some((r) => r.success);
-      overallWhatsappStatus = anySuccess ? 'sent' : 'failed';
-
-      // Update order WhatsApp status
-      const updateOrderWa = db.prepare(`
-        UPDATE orders SET whatsapp_status = ?, whatsapp_error = ? WHERE id = ?
-      `);
-      updateOrderWa.run(overallWhatsappStatus, whatsappErrorMessage || null, orderId);
+      })();
+      whatsappSent = true;
     }
 
     return NextResponse.json({
       success: true,
-      order: {
-        id: orderId,
-        event_title: event.title,
-        customer_name: customerName,
-        customer_phone: customerPhone,
-        total_amount: totalAmount,
-        total_tickets: totalTickets,
-        vendor_commission_amount: commissionAmount,
-        commission_type_applied: commissionType,
-        commission_rate_applied: commissionRate,
-        payment_method: paymentMethod,
-        whatsapp_status: overallWhatsappStatus,
-        whatsapp_error: whatsappErrorMessage,
-        tickets: createdTickets,
-      },
+      orderId,
+      totalAmount,
+      totalTickets,
+      tickets: insertedTickets || createdTickets,
+      whatsappSent,
     });
   } catch (error: any) {
     console.error('POS Checkout error:', error);
-    return NextResponse.json({ error: error.message || 'Error al procesar la venta de taquilla' }, { status: 500 });
+    return NextResponse.json({ error: error.message || 'Error al procesar venta' }, { status: 500 });
   }
 }

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getDb } from '@/lib/db';
+import { supabase } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
 import bcrypt from 'bcryptjs';
 import crypto from 'node:crypto';
@@ -11,45 +11,33 @@ export async function GET() {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
 
-    const db = getDb();
-
-    // If admin, show all vendors; if vendor, show only self
-    let vendorsQuery = "SELECT id, name, email, role, phone, commission_type, commission_rate, is_active, created_at FROM users WHERE role = 'vendor'";
+    let query = supabase.from('users').select('*').eq('role', 'vendor');
     if (user.role !== 'admin') {
-      vendorsQuery += ` AND id = '${user.id}'`;
+      query = query.eq('id', user.id);
     }
-    vendorsQuery += ' ORDER BY name ASC';
+    query = query.order('name', { ascending: true });
 
-    const vendorsStmt = db.prepare(vendorsQuery);
-    const vendors = vendorsStmt.all() as any[];
+    const { data: vendors, error: vendorsError } = await query;
+    if (vendorsError) throw vendorsError;
 
-    // Calculate aggregated sales & commission for each vendor
-    const statsStmt = db.prepare(`
-      SELECT 
-        COUNT(t.id) as total_tickets_sold,
-        COALESCE(SUM(o.total_amount), 0) as total_revenue,
-        COALESCE(SUM(o.vendor_commission_amount), 0) as total_commissions
-      FROM orders o
-      LEFT JOIN tickets t ON t.order_id = o.id
-      WHERE o.vendor_id = ?
-    `);
+    const { data: allOrders } = await supabase.from('orders').select('id, vendor_id, total_amount, vendor_commission_amount');
+    const { data: allTickets } = await supabase.from('tickets').select('id, order_id');
+    const { data: allPayouts } = await supabase.from('commission_payouts').select('vendor_id, amount');
 
-    const payoutStmt = db.prepare(`
-      SELECT COALESCE(SUM(amount), 0) as total_paid
-      FROM commission_payouts
-      WHERE vendor_id = ?
-    `);
+    const enrichedVendors = (vendors || []).map((v) => {
+      const vendorOrders = (allOrders || []).filter((o) => o.vendor_id === v.id);
+      const orderIds = new Set(vendorOrders.map((o) => o.id));
+      const vendorTickets = (allTickets || []).filter((t) => orderIds.has(t.order_id));
+      const vendorPayouts = (allPayouts || []).filter((p) => p.vendor_id === v.id);
 
-    const enrichedVendors = vendors.map((v) => {
-      const stats = statsStmt.get(v.id) as any;
-      const payout = payoutStmt.get(v.id) as any;
-      const totalCommissions = stats?.total_commissions || 0;
-      const totalPaid = payout?.total_paid || 0;
+      const totalRevenue = vendorOrders.reduce((sum, o) => sum + (Number(o.total_amount) || 0), 0);
+      const totalCommissions = vendorOrders.reduce((sum, o) => sum + (Number(o.vendor_commission_amount) || 0), 0);
+      const totalPaid = vendorPayouts.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
 
       return {
         ...v,
-        total_tickets_sold: stats?.total_tickets_sold || 0,
-        total_revenue: stats?.total_revenue || 0,
+        total_tickets_sold: vendorTickets.length,
+        total_revenue: totalRevenue,
         total_commissions: totalCommissions,
         total_paid: totalPaid,
         pending_payout: Math.max(0, totalCommissions - totalPaid),
@@ -58,6 +46,7 @@ export async function GET() {
 
     return NextResponse.json({ vendors: enrichedVendors });
   } catch (error: any) {
+    console.error('Error fetching vendors:', error);
     return NextResponse.json({ error: error.message || 'Error al obtener vendedores' }, { status: 500 });
   }
 }
@@ -70,54 +59,50 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const {
-      name,
-      email,
-      password,
-      phone,
-      commission_type = 'percentage',
-      commission_rate = 10,
-    } = body;
+    const { name, email, password, phone, commission_type = 'percentage', commission_rate = 10.0 } = body;
 
     if (!name || !email || !password) {
       return NextResponse.json({ error: 'Nombre, correo y contraseña son obligatorios' }, { status: 400 });
     }
 
-    const db = getDb();
-    const checkEmail = db.prepare('SELECT id FROM users WHERE email = ?');
-    if (checkEmail.get(email.toLowerCase().trim())) {
-      return NextResponse.json({ error: 'Ya existe un usuario con este correo electrónico' }, { status: 400 });
+    const cleanEmail = email.toLowerCase().trim();
+    const { data: existing } = await supabase.from('users').select('id').eq('email', cleanEmail).maybeSingle();
+    if (existing) {
+      return NextResponse.json({ error: 'Ya existe un usuario registrado con este correo' }, { status: 400 });
     }
 
-    const userId = `usr_vendor_${Date.now()}_${crypto.randomBytes(3).toString('hex')}`;
-    const passwordHash = bcrypt.hashSync(password, 10);
-    const now = new Date().toISOString();
+    const vendorId = `usr_vendor_${Date.now()}_${crypto.randomBytes(3).toString('hex')}`;
+    const passwordHash = bcrypt.hashSync(password.trim(), 10);
 
-    const insert = db.prepare(`
-      INSERT INTO users (
-        id, name, email, password_hash, role, phone,
-        commission_type, commission_rate, is_active, created_at
-      )
-      VALUES (?, ?, ?, ?, 'vendor', ?, ?, ?, 1, ?)
-    `);
+    const { error: insertError } = await supabase.from('users').insert({
+      id: vendorId,
+      name: name.trim(),
+      email: cleanEmail,
+      password_hash: passwordHash,
+      role: 'vendor',
+      phone: phone?.trim() || null,
+      commission_type,
+      commission_rate: Number(commission_rate) || 0,
+      is_active: 1,
+    });
 
-    insert.run(
-      userId,
-      name.trim(),
-      email.toLowerCase().trim(),
-      passwordHash,
-      phone?.trim() || null,
-      commission_type === 'fixed' ? 'fixed' : 'percentage',
-      Number(commission_rate) || 0,
-      now
-    );
+    if (insertError) throw insertError;
 
     return NextResponse.json({
       success: true,
-      vendorId: userId,
       message: 'Vendedor creado exitosamente',
+      vendor: {
+        id: vendorId,
+        name: name.trim(),
+        email: cleanEmail,
+        role: 'vendor',
+        phone: phone?.trim() || null,
+        commission_type,
+        commission_rate: Number(commission_rate) || 0,
+      },
     });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message || 'Error al registrar vendedor' }, { status: 500 });
+    console.error('Error creating vendor:', error);
+    return NextResponse.json({ error: error.message || 'Error al crear vendedor' }, { status: 500 });
   }
 }

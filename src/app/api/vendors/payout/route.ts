@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getDb } from '@/lib/db';
+import { supabase } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
 import crypto from 'node:crypto';
 
@@ -17,16 +17,19 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Vendedor y monto válido requeridos' }, { status: 400 });
     }
 
-    const db = getDb();
     const payoutId = `pay_${Date.now()}_${crypto.randomBytes(3).toString('hex')}`;
     const now = new Date().toISOString();
 
-    const insert = db.prepare(`
-      INSERT INTO commission_payouts (id, vendor_id, amount, notes, paid_at, created_by)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `);
+    const { error } = await supabase.from('commission_payouts').insert({
+      id: payoutId,
+      vendor_id,
+      amount: Number(amount),
+      notes: notes?.trim() || null,
+      paid_at: now,
+      created_by: user.name,
+    });
 
-    insert.run(payoutId, vendor_id, Number(amount), notes?.trim() || null, now, user.name);
+    if (error) throw error;
 
     return NextResponse.json({
       success: true,

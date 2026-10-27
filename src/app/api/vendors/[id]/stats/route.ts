@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getDb } from '@/lib/db';
+import { supabase } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
 
 export async function GET(
@@ -14,80 +14,59 @@ export async function GET(
 
     const { id } = await params;
 
-    // A vendor can only see their own stats unless they are admin
     if (user.role !== 'admin' && user.id !== id) {
       return NextResponse.json({ error: 'Acceso denegado a las estadísticas de este vendedor' }, { status: 403 });
     }
 
-    const db = getDb();
+    const { data: vendor, error: vendorError } = await supabase
+      .from('users')
+      .select('id, name, email, phone, commission_type, commission_rate')
+      .eq('id', id)
+      .single();
 
-    // Get vendor info
-    const vendorStmt = db.prepare('SELECT id, name, email, phone, commission_type, commission_rate FROM users WHERE id = ?');
-    const vendor = vendorStmt.get(id) as any;
-
-    if (!vendor) {
+    if (vendorError || !vendor) {
       return NextResponse.json({ error: 'Vendedor no encontrado' }, { status: 404 });
     }
 
-    // Summary calculations
-    const summaryStmt = db.prepare(`
-      SELECT 
-        COUNT(DISTINCT o.id) as total_orders,
-        COUNT(t.id) as total_tickets_sold,
-        COALESCE(SUM(o.total_amount), 0) as total_revenue,
-        COALESCE(SUM(o.vendor_commission_amount), 0) as total_commissions
-      FROM orders o
-      LEFT JOIN tickets t ON t.order_id = o.id
-      WHERE o.vendor_id = ?
-    `);
-    const summary = summaryStmt.get(id) as any;
+    const { data: orders } = await supabase
+      .from('orders')
+      .select('id, total_amount, vendor_commission_amount, status, created_at, customer_name, customer_phone, events(title)')
+      .eq('vendor_id', id);
 
-    // Payouts paid so far
-    const payoutStmt = db.prepare(`
-      SELECT COALESCE(SUM(amount), 0) as total_paid
-      FROM commission_payouts
-      WHERE vendor_id = ?
-    `);
-    const payoutResult = payoutStmt.get(id) as any;
-    const totalPaid = payoutResult?.total_paid || 0;
-    const totalCommissions = summary?.total_commissions || 0;
+    const { data: payouts } = await supabase
+      .from('commission_payouts')
+      .select('amount')
+      .eq('vendor_id', id);
+
+    const { data: tickets } = await supabase.from('tickets').select('id, order_id');
+    const orderIds = new Set((orders || []).map((o) => o.id));
+    const vendorTickets = (tickets || []).filter((t) => orderIds.has(t.order_id));
+
+    const totalRevenue = (orders || []).reduce((sum, o) => sum + (Number(o.total_amount) || 0), 0);
+    const totalCommissions = (orders || []).reduce((sum, o) => sum + (Number(o.vendor_commission_amount) || 0), 0);
+    const totalPaid = (payouts || []).reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
     const pendingBalance = Math.max(0, totalCommissions - totalPaid);
 
-    // Recent orders with events and ticket details
-    const ordersStmt = db.prepare(`
-      SELECT 
-        o.*,
-        e.title as event_title,
-        e.event_date,
-        (SELECT COUNT(*) FROM tickets tk WHERE tk.order_id = o.id) as ticket_count
-      FROM orders o
-      JOIN events e ON o.event_id = e.id
-      WHERE o.vendor_id = ?
-      ORDER BY o.created_at DESC
-      LIMIT 100
-    `);
-    const orders = ordersStmt.all(id) as any[];
-
-    // Payout history
-    const payoutHistoryStmt = db.prepare(`
-      SELECT * FROM commission_payouts WHERE vendor_id = ? ORDER BY paid_at DESC
-    `);
-    const payouts = payoutHistoryStmt.all(id) as any[];
+    const recentOrders = (orders || []).slice(0, 10).map((o: any) => ({
+      ...o,
+      event_title: o.events?.title || 'Horror Fest',
+      ticket_count: (tickets || []).filter((t) => t.order_id === o.id).length,
+    }));
 
     return NextResponse.json({
       vendor,
-      metrics: {
-        total_orders: summary?.total_orders || 0,
-        total_tickets_sold: summary?.total_tickets_sold || 0,
-        total_revenue: summary?.total_revenue || 0,
+      stats: {
+        total_orders: orders?.length || 0,
+        total_tickets_sold: vendorTickets.length,
+        total_revenue: totalRevenue,
         total_commissions: totalCommissions,
         total_paid: totalPaid,
         pending_balance: pendingBalance,
       },
-      orders,
-      payouts,
+      recent_orders: recentOrders,
     });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message || 'Error al obtener estadísticas del vendedor' }, { status: 500 });
+    console.error('Error fetching vendor stats:', error);
+    return NextResponse.json({ error: error.message || 'Error al obtener estadísticas' }, { status: 500 });
   }
 }

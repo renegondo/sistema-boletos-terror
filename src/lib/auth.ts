@@ -1,6 +1,6 @@
 import jwt from 'jsonwebtoken';
 import { cookies } from 'next/headers';
-import { getDb } from './db';
+import { supabase } from './supabase';
 import { User } from '@/types';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'boletos-super-secret-key-2026-production';
@@ -34,10 +34,15 @@ export async function getCurrentUser(): Promise<User | null> {
     const decoded = verifyToken(token);
     if (!decoded) return null;
 
-    const db = getDb();
-    const query = db.prepare('SELECT id, name, email, role, phone, commission_type, commission_rate, is_active, created_at FROM users WHERE id = ? AND is_active = 1');
-    const user = query.get(decoded.userId) as User | undefined;
-    return user || null;
+    const { data: user, error } = await supabase
+      .from('users')
+      .select('id, name, email, role, phone, commission_type, commission_rate, is_active, created_at')
+      .eq('id', decoded.userId)
+      .eq('is_active', 1)
+      .single();
+
+    if (error || !user) return null;
+    return user as User;
   } catch (error) {
     console.error('Error in getCurrentUser:', error);
     return null;
