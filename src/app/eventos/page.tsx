@@ -19,6 +19,8 @@ import {
 } from 'lucide-react';
 import { EventItem, User } from '@/types';
 
+export const dynamic = 'force-dynamic';
+
 export default function EventosPage() {
   const router = useRouter();
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -159,8 +161,8 @@ export default function EventosPage() {
   const loadData = async () => {
     try {
       const [userRes, eventsRes] = await Promise.all([
-        fetch('/api/auth/me'),
-        fetch('/api/events'),
+        fetch('/api/auth/me', { cache: 'no-store' }),
+        fetch('/api/events', { cache: 'no-store' }),
       ]);
 
       const userData = await userRes.json();

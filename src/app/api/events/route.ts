@@ -3,6 +3,9 @@ import { supabase } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
 import crypto from 'node:crypto';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -12,7 +15,7 @@ export async function GET(request: Request) {
     if (status) {
       query = query.eq('status', status);
     }
-    query = query.order('event_date', { ascending: true });
+    query = query.order('created_at', { ascending: false });
 
     const { data: events, error } = await query;
     if (error) throw error;
@@ -34,7 +37,14 @@ export async function GET(request: Request) {
       };
     });
 
-    return NextResponse.json({ events: enrichedEvents });
+    return NextResponse.json(
+      { events: enrichedEvents },
+      {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+        },
+      }
+    );
   } catch (error: any) {
     console.error('Error fetching events:', error);
     return NextResponse.json({ error: error.message || 'Error al obtener eventos' }, { status: 500 });

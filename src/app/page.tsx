@@ -5,6 +5,8 @@ import Image from 'next/image';
 import { Skull, Flame, Calendar, Clock, MapPin, Wine, Search, User, Phone, CheckCircle2, AlertCircle, Copy, Send, ShieldCheck, Tag, Lock, Download, MessageCircle, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import TicketTrackerModal from '@/components/TicketTrackerModal';
 
+export const dynamic = 'force-dynamic';
+
 export default function HorrorFestLandingPage() {
   const [isTrackerOpen, setIsTrackerOpen] = useState(false);
   const [globalLightning, setGlobalLightning] = useState(false);
@@ -24,14 +26,28 @@ export default function HorrorFestLandingPage() {
   const [copiedClabe, setCopiedClabe] = useState(false);
   const [eventData, setEventData] = useState<any>(null);
 
-  // Load live event tier data (synced with DB)
+  // Load live event tier data (synced with DB, no-store cache)
   useEffect(() => {
-    fetch('/api/events/evt_rodada_terror_2026')
+    fetch('/api/events?status=active', { cache: 'no-store' })
       .then((res) => res.json())
       .then((data) => {
-        if (data?.event) setEventData(data.event);
+        const active = data?.events?.[0];
+        if (active) {
+          setEventData(active);
+          if (active.tiers && active.tiers.length > 0) {
+            setSelectedTierId(active.tiers[0].id);
+          }
+        }
       })
-      .catch(() => {});
+      .catch(() => {
+        // Fallback to direct event query
+        fetch('/api/events/evt_rodada_terror_2026', { cache: 'no-store' })
+          .then((res) => res.json())
+          .then((data) => {
+            if (data?.event) setEventData(data.event);
+          })
+          .catch(() => {});
+      });
   }, []);
 
   // Random Ambient Lightning
@@ -148,7 +164,7 @@ export default function HorrorFestLandingPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          eventId: 'evt_rodada_terror_2026',
+          eventId: eventData?.id || 'evt_rodada_terror_2026',
           customerName: customerName.trim(),
           customerPhone: fullPhone,
           tierId: selectedTierId,
@@ -350,12 +366,17 @@ export default function HorrorFestLandingPage() {
         <div className="flex flex-col sm:flex-row items-center justify-center gap-5 sm:gap-10 w-full mb-16 font-mono text-[10px] sm:text-xs font-bold text-slate-300 uppercase tracking-widest border-y border-white/5 py-6 bg-black/30 backdrop-blur-sm">
           <div className="flex items-center gap-2">
             <Calendar className="w-4 h-4 text-red-600" />
-            <span>1 Nov 2026</span>
+            <span>{eventData?.event_date || '1 Nov 2026'}</span>
+          </div>
+          <div className="hidden sm:block text-red-900/50">|</div>
+          <div className="flex items-center gap-2">
+            <Clock className="w-4 h-4 text-red-600" />
+            <span>{eventData?.event_time ? `${eventData.event_time} HRS` : '21:00 HRS'}</span>
           </div>
           <div className="hidden sm:block text-red-900/50">|</div>
           <div className="flex items-center gap-2">
             <MapPin className="w-4 h-4 text-red-600" />
-            <span>Salón del Sindicato del IMSS</span>
+            <span>{eventData?.location || 'Salón del Sindicato del IMSS'}</span>
           </div>
           <div className="hidden sm:block text-red-900/50">|</div>
           <div className="flex items-center gap-2">

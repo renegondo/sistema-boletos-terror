@@ -3,6 +3,9 @@ import { supabase } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
 import crypto from 'node:crypto';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -42,17 +45,24 @@ export async function GET(
       }
     }
 
-    return NextResponse.json({
-      event: {
-        ...event,
-        tiers: tiers || [],
-        stats: {
-          total_orders: totalOrders,
-          total_revenue: totalRevenue,
-          total_commissions: totalCommissions,
+    return NextResponse.json(
+      {
+        event: {
+          ...event,
+          tiers: tiers || [],
+          stats: {
+            total_orders: totalOrders,
+            total_revenue: totalRevenue,
+            total_commissions: totalCommissions,
+          },
         },
       },
-    });
+      {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+        },
+      }
+    );
   } catch (error: any) {
     return NextResponse.json({ error: error.message || 'Error al obtener el evento' }, { status: 500 });
   }
@@ -92,6 +102,22 @@ export async function PUT(
 
     // Update tiers if provided
     if (tiers && Array.isArray(tiers)) {
+      const incomingTierIds = new Set(tiers.filter((t) => t.id).map((t) => t.id));
+
+      // Get existing tiers
+      const { data: currentTiers } = await supabase
+        .from('ticket_tiers')
+        .select('id, sold_count')
+        .eq('event_id', id);
+
+      if (currentTiers) {
+        for (const existing of currentTiers) {
+          if (!incomingTierIds.has(existing.id) && (Number(existing.sold_count) || 0) === 0) {
+            await supabase.from('ticket_tiers').delete().eq('id', existing.id);
+          }
+        }
+      }
+
       for (const tier of tiers) {
         if (tier.id) {
           await supabase
@@ -100,7 +126,7 @@ export async function PUT(
               name: tier.name,
               price: Number(tier.price),
               capacity: Number(tier.capacity),
-              description: tier.description,
+              description: tier.description || '',
             })
             .eq('id', tier.id);
         } else {
@@ -114,7 +140,7 @@ export async function PUT(
               price: Number(tier.price),
               capacity: Number(tier.capacity),
               sold_count: 0,
-              description: tier.description,
+              description: tier.description || '',
             });
         }
       }
