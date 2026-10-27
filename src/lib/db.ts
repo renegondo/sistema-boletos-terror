@@ -200,7 +200,7 @@ function initDb(db: DatabaseSync) {
     // Default Settings
     const insertSetting = db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)');
     insertSetting.run('evolution_api_url', 'https://api.bebot.click');
-    insertSetting.run('evolution_api_key', 'lJkzchqWmDn9ZNyuKaQRogOFVOvCwhGfXARtIG9e9pv9WZsbjoRqo');
+    insertSetting.run('evolution_api_key', 'NKofAZi4Gov+lJkzchqWmDn9ZNyuKaQRogOFVOvCwhGfXARtIG9e9pv9WZsbjoRqo/NEo777aEfEWp2CJvW3Rw==');
     insertSetting.run('evolution_instance_name', 'ayuntamiento');
     insertSetting.run('currency_symbol', '$');
     insertSetting.run('currency_code', 'MXN');

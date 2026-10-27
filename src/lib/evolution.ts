@@ -17,7 +17,7 @@ export function getEvolutionConfig(): EvolutionConfig {
   const autoSendRow = getSetting.get('whatsapp_auto_send') as { value: string } | undefined;
 
   const apiUrl = process.env.EVOLUTION_API_URL || (urlRow?.value && urlRow.value !== 'http://localhost:8080' ? urlRow.value : 'https://api.bebot.click');
-  const apiKey = process.env.EVOLUTION_API_KEY || (keyRow?.value && keyRow.value !== 'TU_API_KEY_AQUI' ? keyRow.value : 'lJkzchqWmDn9ZNyuKaQRogOFVOvCwhGfXARtIG9e9pv9WZsbjoRqo');
+  const apiKey = process.env.EVOLUTION_API_KEY || (keyRow?.value && keyRow.value !== 'TU_API_KEY_AQUI' && keyRow.value !== 'lJkzchqWmDn9ZNyuKaQRogOFVOvCwhGfXARtIG9e9pv9WZsbjoRqo' ? keyRow.value : 'NKofAZi4Gov+lJkzchqWmDn9ZNyuKaQRogOFVOvCwhGfXARtIG9e9pv9WZsbjoRqo/NEo777aEfEWp2CJvW3Rw==');
   const instanceName = process.env.EVOLUTION_INSTANCE_NAME || (instanceRow?.value && instanceRow.value !== 'boletos_instance' ? instanceRow.value : 'ayuntamiento');
 
   return {
