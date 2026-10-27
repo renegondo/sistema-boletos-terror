@@ -4,6 +4,9 @@ import { getCurrentUser } from '@/lib/auth';
 import { generateTicketPngBase64 } from '@/lib/ticket-generator';
 import { sendTicketViaWhatsApp } from '@/lib/evolution';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ code: string }> }

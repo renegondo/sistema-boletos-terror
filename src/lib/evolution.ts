@@ -22,6 +22,10 @@ export function getEvolutionConfig(): EvolutionConfig {
 export function cleanPhoneNumber(phone: string): string {
   // Remove spaces, dashes, plus signs, brackets
   let clean = phone.replace(/[^\d]/g, '');
+  // If 10 digits (Mexican local mobile without country code), prepend 52
+  if (clean.length === 10) {
+    clean = `52${clean}`;
+  }
   return clean;
 }
 
@@ -90,41 +94,54 @@ export async function sendTicketViaWhatsApp(params: {
   }
 
   const cleanPhone = cleanPhoneNumber(params.phone);
-  if (!cleanPhone || cleanPhone.length < 8) {
+  if (!cleanPhone || cleanPhone.length < 10) {
     return {
       success: false,
       error: `Número telefónico inválido: "${params.phone}".`,
     };
   }
 
+  // Evolution API requires raw base64 or public URL, reject data:image/png;base64,
+  let mediaPayload = params.imageBase64OrUrl;
+  if (mediaPayload && mediaPayload.startsWith('data:')) {
+    mediaPayload = mediaPayload.replace(/^data:image\/[a-zA-Z]+;base64,/, '');
+  }
+
   const caption = 
-`🎟️ *¡TU BOLETO DIGITAL ESTÁ LISTO!* 🎟️
+`🎟️ *¡TU BOLETO DIGITAL HORROR FEST!* 🎟️
 
 ¡Hola *${params.attendeeName}*!
 Aquí tienes tu entrada oficial para:
 🔥 *${params.eventTitle}*
 
 📅 *Fecha:* ${params.eventDate}
-⏰ *Hora:* ${params.eventTime}
+⏰ *Hora:* ${params.eventTime} hrs
 📍 *Lugar:* ${params.location}
-🏷️ *Zona / Tipo:* ${params.tierName}
-💰 *Precio:* $${params.price.toFixed(2)} MXN
-🔢 *Folio:* ${params.ticketCode}
+🏷️ *Zona / Acceso:* ${params.tierName}
+💰 *Total:* $${params.price.toFixed(2)} MXN
+🔢 *Folio Único:* ${params.ticketCode}
 
-${params.isPending ? `⚠️ *ESTADO: PENDIENTE DE PAGO* ⚠️
-Tu lugar está asegurado, pero tu código QR aún no está activado.
-Entrégale el efectivo a tu RP o administrador para que liberen tu acceso. Una vez pagado, este mismo QR te dará entrada.` : `⚠️ *Instrucciones:*
-• Presenta este código QR en el acceso del evento para su validación.
-• Cada boleto es único y solo puede escanearse una vez.
+${params.isPending ? `⚠️ *ESTADO: PRE-REGISTRO PENDIENTE DE PAGO* ⚠️
+Tu lugar está apartado. Para activar definitivamente tu código QR de acceso en puerta, realiza tu transferencia bancaria:
 
-¡Disfruta el evento! 🎉`}`;
+💳 *Datos BBVA / STP:*
+• Banco: *BBVA Bancomer*
+• CLABE: *012180015678901234*
+• Beneficiario: *Flow Productions*
+• Concepto: *${params.ticketCode}*
+
+📲 *Envía tu captura de comprobante a este chat para activar tu acceso.*` : `✅ *BOLETO ACTIVADO Y CONFIRMADO:*
+• Presenta este código QR en el acceso del Salón del Sindicato del IMSS para tu pulsera.
+• Cada boleto es infalsificable y de uso único en lector láser.
+
+¡Prepárate para la noche más intensa del año! 💀🏁`}`;
 
   try {
     const endpoint = `${config.apiUrl}/message/sendMedia/${encodeURIComponent(config.instanceName)}`;
 
     const payload = {
       number: cleanPhone,
-      media: params.imageBase64OrUrl,
+      media: mediaPayload,
       mediatype: 'image',
       mimetype: 'image/png',
       caption: caption,
@@ -211,8 +228,8 @@ Hemos registrado exitosamente tu apartado de boletos para el evento oficial:
 Tus lugares están reservados temporalmente. Para asegurar tus pulseras numeradas y recibir tu **Código QR Digital de Acceso**, realiza tu liquidación por transferencia o en taquilla:
 
 💳 *Datos Bancarios Oficiales:*
-• Banco: *BBVA / STP*
-• CLABE: *012180015582910384*
+• Banco: *BBVA Bancomer*
+• CLABE: *012180015678901234*
 • Beneficiario: *Flow Productions*
 • Concepto / Referencia: *${params.orderId}*
 

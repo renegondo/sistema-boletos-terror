@@ -1,8 +1,11 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/db';
-import { sendTicketViaWhatsApp } from '@/lib/evolution';
+import { sendTicketViaWhatsApp, getEvolutionConfig } from '@/lib/evolution';
 import { generateTicketPngBase64 } from '@/lib/ticket-generator';
 import crypto from 'node:crypto';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export async function GET(request: Request) {
   try {
@@ -199,12 +202,63 @@ export async function POST(request: Request) {
       attendee: t.attendee_name,
     }));
 
+    // Dispatch WhatsApp tickets asynchronously
+    const evoConfig = getEvolutionConfig();
+    let whatsappDispatched = false;
+
+    if (evoConfig.autoSend) {
+      (async () => {
+        try {
+          for (const tkt of tickets) {
+            const pngBase64 = await generateTicketPngBase64({
+              ticketCode: tkt.ticket_code,
+              eventTitle: event.title,
+              eventDate: event.event_date,
+              eventTime: event.event_time,
+              location: event.location,
+              tierName: tierName,
+              price: tkt.price,
+              attendeeName: tkt.attendee_name,
+              orderId: orderId,
+            });
+
+            await sendTicketViaWhatsApp({
+              phone: cleanPhone,
+              attendeeName: tkt.attendee_name,
+              eventTitle: event.title,
+              eventDate: event.event_date,
+              eventTime: event.event_time,
+              location: event.location,
+              ticketCode: tkt.ticket_code,
+              tierName: tierName,
+              price: tkt.price,
+              imageBase64OrUrl: pngBase64,
+              isPending: true,
+            });
+          }
+
+          await supabase
+            .from('orders')
+            .update({ whatsapp_status: 'sent', whatsapp_error: null })
+            .eq('id', orderId);
+        } catch (err: any) {
+          console.error('Error dispatching WhatsApp tickets on order creation:', err);
+          await supabase
+            .from('orders')
+            .update({ whatsapp_status: 'failed', whatsapp_error: err?.message || 'Error al enviar WhatsApp' })
+            .eq('id', orderId);
+        }
+      })();
+      whatsappDispatched = true;
+    }
+
     return NextResponse.json({
       success: true,
       orderId,
       totalAmount,
       currency: 'MXN',
       tickets: formattedTickets,
+      whatsappDispatched,
       paymentInstructions: {
         bank: 'BBVA Bancomer',
         beneficiary: 'Flow Productions / Horror Fest',
