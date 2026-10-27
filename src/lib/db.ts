@@ -199,9 +199,9 @@ function initDb(db: DatabaseSync) {
 
     // Default Settings
     const insertSetting = db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)');
-    insertSetting.run('evolution_api_url', 'http://localhost:8080');
-    insertSetting.run('evolution_api_key', 'TU_API_KEY_AQUI');
-    insertSetting.run('evolution_instance_name', 'boletos_instance');
+    insertSetting.run('evolution_api_url', 'https://api.bebot.click');
+    insertSetting.run('evolution_api_key', 'lJkzchqWmDn9ZNyuKaQRogOFVOvCwhGfXARtIG9e9pv9WZsbjoRqo');
+    insertSetting.run('evolution_instance_name', 'ayuntamiento');
     insertSetting.run('currency_symbol', '$');
     insertSetting.run('currency_code', 'MXN');
     insertSetting.run('business_name', 'Hi-Boletos Express');
