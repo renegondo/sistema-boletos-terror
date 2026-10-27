@@ -37,7 +37,7 @@ El evento cuenta con una combinación de talento con alto alcance digital, shows
 ```
                 ┌─────────────────────────────────────────┐
                 │             HEADLINERS                  │
-                │   VALE QUEEN   •   DJ JHONAS (Spotify)   │
+                │   VALE QUEEN   •   DJ JHONAZ (Spotify)   │
                 └────────────────────┬────────────────────┘
                                      │
          ┌───────────────────────────┴───────────────────────────┐
@@ -52,7 +52,7 @@ El evento cuenta con una combinación de talento con alto alcance digital, shows
 1. **Vale Queen (@Valequeenoficial):** 
    - Gogo dancer, influencer y figura estelar de la vida nocturna y medios (ex-participante de reality shows nacionales como *Enamorándonos* y figura central en carnavales y eventos masivos). 
    - *Aporte:* Alto rapport, engagement masivo en Instagram/TikTok y enorme convocatoria presencial.
-2. **DJ Jhonas:** 
+2. **DJ Jhonaz:** 
    - DJ y productor con **más de 300,000 reproducciones mensuales en Spotify**. 
    - *Aporte:* Calidad musical comprobada, arrastre de fans de música urbana y resonancia en plataformas digitales.
 3. **Dege:** 
@@ -112,7 +112,7 @@ Este evento ofrece a las marcas la oportunidad de impactar directamente a un seg
 
 * **Impacto Presencial:** 800 - 1,200+ personas en Salón Casino.
 * **Impacto en Rodada (Vía Pública):** 600 - 800 motos recorriendo la ciudad con alto impacto visual en avenidas principales.
-* **Alcance Digital Estimado:** +150,000 visualizaciones combinadas en redes sociales (Vale Queen + DJ Jhonas + Flow Productions + pauta local).
+* **Alcance Digital Estimado:** +150,000 visualizaciones combinadas en redes sociales (Vale Queen + DJ Jhonaz + Flow Productions + pauta local).
 
 ---
 

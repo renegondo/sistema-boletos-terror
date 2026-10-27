@@ -148,7 +148,7 @@ export async function POST(request: Request) {
       customer_name: customerName.trim(),
       customer_phone: cleanPhone,
       customer_email: customerEmail?.trim() || null,
-      payment_method: 'transfer',
+      payment_method: 'cash',
       total_amount: totalAmount,
       vendor_commission_amount: commissionAmount,
       commission_type_applied: commissionType,
@@ -260,9 +260,8 @@ export async function POST(request: Request) {
       tickets: formattedTickets,
       whatsappDispatched,
       paymentInstructions: {
-        bank: 'BBVA Bancomer',
-        beneficiary: 'Flow Productions / Horror Fest',
-        clabe: '012180015678901234',
+        method: 'cash',
+        note: 'Pago únicamente en efectivo en taquilla / con tu RP al ingresar',
         concept: orderId,
       },
     });

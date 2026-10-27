@@ -121,16 +121,15 @@ Aquí tienes tu entrada oficial para:
 💰 *Total:* $${params.price.toFixed(2)} MXN
 🔢 *Folio Único:* ${params.ticketCode}
 
-${params.isPending ? `⚠️ *ESTADO: PRE-REGISTRO PENDIENTE DE PAGO* ⚠️
-Tu lugar está apartado. Para activar definitivamente tu código QR de acceso en puerta, realiza tu transferencia bancaria:
+${params.isPending ? `⚠️ *ESTADO: PRE-REGISTRO CONFIRMADO (PAGO EN EFECTIVO)* ⚠️
+Tu lugar y boletos están apartados en el sistema.
 
-💳 *Datos BBVA / STP:*
-• Banco: *BBVA Bancomer*
-• CLABE: *012180015678901234*
-• Beneficiario: *Flow Productions*
-• Concepto: *${params.ticketCode}*
+💵 *Modalidad de Pago:*
+• El cobro es *ÚNICAMENTE EN EFECTIVO*.
+• Presenta tu folio *${params.ticketCode}* directamente en la taquilla / puerta del *${params.location}* o con tu RP asignado.
+• Liquida tu total de *$${params.price.toFixed(2)} MXN en efectivo* al ingresar para recibir tu pulsera oficial numerada.
 
-📲 *Envía tu captura de comprobante a este chat para activar tu acceso.*` : `✅ *BOLETO ACTIVADO Y CONFIRMADO:*
+¡Nos vemos en el evento más salvaje del año! 💀🏁` : `✅ *BOLETO ACTIVADO Y CONFIRMADO:*
 • Presenta este código QR en el acceso del Salón del Sindicato del IMSS para tu pulsera.
 • Cada boleto es infalsificable y de uso único en lector láser.
 
@@ -224,21 +223,12 @@ Hemos registrado exitosamente tu apartado de boletos para el evento oficial:
 • *Sede:* ${params.location}
 • *Modalidad:* 🍾 BYOB (Descorche Libre - Entra tus botellas)
 
-⚠️ *PASO SIGUIENTE PARA RECIBIR TU CÓDIGO QR OFICIAL:*
-Tus lugares están reservados temporalmente. Para asegurar tus pulseras numeradas y recibir tu **Código QR Digital de Acceso**, realiza tu liquidación por transferencia o en taquilla:
+💵 *MODALIDAD DE PAGO:*
+• El cobro es *ÚNICAMENTE EN EFECTIVO*.
+• Presenta tu folio de reserva *#${params.orderId}* directamente en la taquilla del *${params.location}* o con tu RP asignado.
+• Liquida *$${params.totalAmount.toFixed(2)} MXN en efectivo* al ingresar y se te entregará tu pulsera oficial conmemorativa.
 
-💳 *Datos Bancarios Oficiales:*
-• Banco: *BBVA Bancomer*
-• CLABE: *012180015678901234*
-• Beneficiario: *Flow Productions*
-• Concepto / Referencia: *${params.orderId}*
-
-📲 *Envío de Comprobante:*
-Responde a este mensaje con tu captura de pantalla de transferencia citando tu folio *#${params.orderId}*.
-
-⚡ En cuanto el staff valide tu pago en el sistema, recibirás automáticamente aquí en WhatsApp tu **Código QR Oficial Infalsificable** para ingresar al Salón del Sindicato del IMSS.
-
-¡Nos vemos en la rodada! 💀🏁`;
+¡Nos vemos en la rodada más salvaje! 💀🏁`;
 
   try {
     const endpoint = `${config.apiUrl}/message/sendText/${encodeURIComponent(config.instanceName)}`;

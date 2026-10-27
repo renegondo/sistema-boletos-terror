@@ -28,7 +28,6 @@ export default function TicketTrackerModal({ isOpen, onClose }: TicketTrackerMod
   const [searchedOrders, setSearchedOrders] = useState<any[] | null>(null);
   const [error, setError] = useState('');
   const [selectedTicketQr, setSelectedTicketQr] = useState<any | null>(null);
-  const [copiedClabe, setCopiedClabe] = useState(false);
 
   if (!isOpen) return null;
 
@@ -212,45 +211,35 @@ export default function TicketTrackerModal({ isOpen, onClose }: TicketTrackerMod
                   </div>
                 )}
 
-                {/* If pending: show instructions to pay */}
+                {/* If pending: show instructions to pay in cash */}
                 {isPending && (
                   <div className="p-4 rounded-xl bg-amber-950/40 border border-amber-900/60 text-xs text-amber-200 space-y-2">
                     <p className="font-bold text-amber-300 flex items-center gap-1.5">
                       <Clock className="w-4 h-4 text-amber-400" />
-                      <span>Pago en revisión o pendiente de transferencia</span>
+                      <span>Pre-registro Confirmado • Pago en Efectivo</span>
                     </p>
-                    <p className="text-[11px] text-slate-300 leading-relaxed">
-                      Transfiere <strong>${ord.total_amount?.toFixed(2)} MXN</strong> a BBVA / STP CLABE:
+                    <p className="text-[11px] text-slate-300 leading-relaxed font-sans">
+                      Tu lugar está apartado. El cobro se realiza <strong>únicamente en efectivo</strong> al ingresar en taquilla o con tu RP asignado.
                     </p>
-                    <div className="flex items-center justify-between bg-black/60 p-2 rounded-lg border border-amber-500/30 font-mono text-[11px]">
-                      <span className="text-amber-300 font-bold">012180015678901234</span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          navigator.clipboard.writeText('012180015678901234');
-                          setCopiedClabe(true);
-                          setTimeout(() => setCopiedClabe(false), 2000);
-                        }}
-                        className="text-amber-400 hover:text-white flex items-center gap-1 text-[10px] bg-amber-900/50 px-2 py-1 rounded border border-amber-500/40"
-                      >
-                        <Copy className="w-3 h-3" />
-                        <span>{copiedClabe ? '¡Copiado!' : 'Copiar'}</span>
-                      </button>
+                    <div className="flex justify-between items-center text-slate-400 font-mono text-[11px] pt-1 border-t border-slate-800">
+                      <span>Total a Liquidar:</span>
+                      <strong className="text-emerald-400 font-bold">${ord.total_amount?.toFixed(2)} MXN</strong>
                     </div>
-                    <div className="text-[11px] text-slate-300">
-                      Concepto / Referencia: <strong className="text-red-400 font-mono">{ord.id}</strong>
+                    <div className="flex justify-between items-center text-slate-400 font-mono text-[11px]">
+                      <span>Folio de Reserva:</span>
+                      <strong className="text-red-400 font-bold">{ord.id}</strong>
                     </div>
 
                     <a
                       href={`https://api.whatsapp.com/send?text=${encodeURIComponent(
-                        `Hola, adjunto mi comprobante de pago para Horror Fest 2026.\nFolio: ${ord.id}\nNombre: ${ord.customer_name}\nTotal: $${ord.total_amount} MXN`
+                        `Hola, tengo mi pre-registro para Horror Fest 2026.\nFolio: ${ord.id}\nNombre: ${ord.customer_name}\nTotal en efectivo: $${ord.total_amount} MXN\nPagaré en taquilla / con mi RP.`
                       )}`}
                       target="_blank"
                       rel="noreferrer"
                       className="mt-2 w-full py-2 px-3 rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-colors"
                     >
                       <MessageCircle className="w-3.5 h-3.5" />
-                      <span>Enviar Comprobante por WhatsApp</span>
+                      <span>Contactar por WhatsApp</span>
                     </a>
                   </div>
                 )}

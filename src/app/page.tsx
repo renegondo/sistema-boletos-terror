@@ -23,7 +23,6 @@ export default function HorrorFestLandingPage() {
   const [error, setError] = useState('');
   const [successData, setSuccessData] = useState<any | null>(null);
   const [activeTicketIndex, setActiveTicketIndex] = useState(0);
-  const [copiedClabe, setCopiedClabe] = useState(false);
   const [eventData, setEventData] = useState<any>(null);
 
   // Load live event tier data (synced with DB, no-store cache)
@@ -187,12 +186,6 @@ export default function HorrorFestLandingPage() {
     }
   };
 
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-    setCopiedClabe(true);
-    setTimeout(() => setCopiedClabe(false), 2000);
-  };
-
   return (
     <div className="relative min-h-[100dvh] bg-[#020202] text-slate-100 overflow-x-hidden selection:bg-red-600 selection:text-white font-sans">
       
@@ -320,7 +313,7 @@ export default function HorrorFestLandingPage() {
                   Vale Queen
                 </div>
                 <div className="text-4xl sm:text-6xl font-black text-transparent bg-clip-text bg-gradient-to-b from-slate-100 to-slate-400 uppercase tracking-tighter mt-[-2%] drop-shadow-[0_0_20px_rgba(255,255,255,0.2)]">
-                  DJ Jhonas
+                  DJ Jhonaz
                 </div>
               </div>
 
@@ -635,48 +628,28 @@ export default function HorrorFestLandingPage() {
               </div>
             )}
 
-            {/* Bank Transfer Instructions */}
-            {successData.paymentInstructions && (
-              <div className="w-full bg-black/80 rounded-2xl p-3.5 border border-red-900/40 text-left mb-3 font-mono text-xs space-y-1.5">
-                <div className="text-[10px] uppercase font-bold text-red-400 tracking-wider mb-1 flex items-center gap-1">
-                  <ShieldCheck className="w-3.5 h-3.5" />
-                  <span>Datos de Transferencia Bancaria</span>
-                </div>
-                <div className="flex justify-between text-slate-400">
-                  <span>Banco:</span>
-                  <span className="text-white font-bold">{successData.paymentInstructions.bank}</span>
-                </div>
-                <div className="flex justify-between text-slate-400">
-                  <span>Beneficiario:</span>
-                  <span className="text-white font-bold">{successData.paymentInstructions.beneficiary}</span>
-                </div>
-                <div className="flex justify-between items-center text-slate-400 pt-1 border-t border-slate-800">
-                  <span>CLABE STP:</span>
-                  <button
-                    type="button"
-                    onClick={() => copyToClipboard(successData.paymentInstructions.clabe)}
-                    className="text-amber-400 hover:text-amber-300 font-bold flex items-center gap-1 bg-amber-950/40 px-2 py-0.5 rounded border border-amber-500/30 transition-colors"
-                  >
-                    <span>{successData.paymentInstructions.clabe}</span>
-                    <Copy className="w-3 h-3" />
-                  </button>
-                </div>
-                <div className="flex justify-between text-slate-400">
-                  <span>Concepto:</span>
-                  <span className="text-red-400 font-bold">{successData.paymentInstructions.concept}</span>
-                </div>
-                <div className="flex justify-between text-slate-400 pt-1 border-t border-slate-800">
-                  <span>Total a Pagar:</span>
-                  <span className="text-emerald-400 font-black text-sm">${successData.totalAmount} MXN</span>
-                </div>
+            {/* Cash Payment Instructions */}
+            <div className="w-full bg-black/80 rounded-2xl p-4 border border-emerald-500/30 text-left mb-3 font-mono text-xs space-y-2">
+              <div className="text-[11px] uppercase font-bold text-emerald-400 tracking-wider flex items-center gap-1.5">
+                <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                <span>Modalidad de Cobro: Únicamente Efectivo</span>
               </div>
-            )}
-
-            {copiedClabe && (
-              <div className="w-full text-center text-[11px] text-emerald-400 font-mono py-1 mb-2 bg-emerald-950/50 rounded-lg border border-emerald-500/30">
-                ✓ CLABE copiada al portapapeles
+              <p className="text-[11px] text-slate-300 leading-relaxed font-sans">
+                Tus accesos están apartados. Presenta este código QR o tu folio en taquilla / puerta para pagar en efectivo y recibir tu pulsera oficial.
+              </p>
+              <div className="flex justify-between items-center text-slate-400 pt-1.5 border-t border-slate-800">
+                <span>Lugar de Pago:</span>
+                <span className="text-white font-bold">{eventData?.location || 'Salón del Sindicato del IMSS'}</span>
               </div>
-            )}
+              <div className="flex justify-between items-center text-slate-400">
+                <span>Folio de Reserva:</span>
+                <span className="text-red-400 font-bold">{successData.orderId}</span>
+              </div>
+              <div className="flex justify-between items-center text-slate-400 pt-1.5 border-t border-slate-800">
+                <span>Total a Pagar en Efectivo:</span>
+                <span className="text-emerald-400 font-black text-sm">${successData.totalAmount} MXN</span>
+              </div>
+            </div>
 
             {/* WhatsApp notification CTA */}
             <a
@@ -685,8 +658,8 @@ export default function HorrorFestLandingPage() {
                 `📋 Folio: ${successData.orderId}\n` +
                 `👤 Nombre: ${customerName}\n` +
                 `🎟️ Cantidad: ${quantity} boletos\n` +
-                `💰 Total: $${successData.totalAmount} MXN\n` +
-                `Adjunto mi comprobante de pago bancario.`
+                `💰 Total a pagar en efectivo: $${successData.totalAmount} MXN\n` +
+                `Pagaré directamente en taquilla / con mi RP al llegar.`
               )}`}
               target="_blank"
               rel="noreferrer"
