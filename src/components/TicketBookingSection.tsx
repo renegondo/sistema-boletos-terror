@@ -39,7 +39,7 @@ const TICKET_TIERS: TicketTierOption[] = [
     features: [
       'Acceso al Salón del Sindicato del IMSS (After Oficial)',
       'Modalidad BYOB: Ingresa tus propias botellas/bebidas sin descorche',
-      'Acceso a todos los shows: Vale Queen, DJ Jhonas, Dege, etc.',
+      'Acceso a todos los shows: Vale Queen, DJ Jhonas, Dege, Ahuja, DJ Koy, etc.',
       'Participación en rifas y dinámicas en vivo',
       'Pulsera de seguridad oficial numerada',
     ],
