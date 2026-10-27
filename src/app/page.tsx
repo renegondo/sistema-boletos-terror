@@ -351,6 +351,17 @@ export default function HorrorFestLandingPage() {
                   </span>
                 </div>
               </div>
+
+              {/* Link to Cartel Oficial */}
+              <div className="pt-2">
+                <a
+                  href="/cartel"
+                  className="inline-flex items-center gap-2 text-xs font-mono font-bold uppercase tracking-wider text-red-400 hover:text-white bg-red-950/40 hover:bg-red-900/60 border border-red-500/30 hover:border-red-500/60 px-4 py-2 rounded-xl transition-all shadow-[0_0_15px_rgba(220,38,38,0.2)]"
+                >
+                  <span>🖼️ Ver y Descargar Cartel Oficial HD</span>
+                  <span>→</span>
+                </a>
+              </div>
             </div>
           </div>
         </div>

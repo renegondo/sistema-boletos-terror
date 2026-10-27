@@ -5,7 +5,7 @@ import Navbar from '@/components/Navbar';
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const isHorrorLanding = pathname === '/' || pathname === '/rodada';
+  const isHorrorLanding = pathname === '/' || pathname === '/rodada' || pathname?.startsWith('/cartel');
 
   if (isHorrorLanding) {
     return (
