@@ -12,7 +12,9 @@ import {
   X, 
   Ticket as TicketIcon,
   Phone,
-  ArrowRight
+  ArrowRight,
+  Copy,
+  MessageCircle
 } from 'lucide-react';
 
 interface TicketTrackerModalProps {
@@ -26,6 +28,7 @@ export default function TicketTrackerModal({ isOpen, onClose }: TicketTrackerMod
   const [searchedOrders, setSearchedOrders] = useState<any[] | null>(null);
   const [error, setError] = useState('');
   const [selectedTicketQr, setSelectedTicketQr] = useState<any | null>(null);
+  const [copiedClabe, setCopiedClabe] = useState(false);
 
   if (!isOpen) return null;
 
@@ -211,13 +214,44 @@ export default function TicketTrackerModal({ isOpen, onClose }: TicketTrackerMod
 
                 {/* If pending: show instructions to pay */}
                 {isPending && (
-                  <div className="p-3.5 rounded-xl bg-amber-950/40 border border-amber-900/50 text-xs text-amber-200 space-y-1">
-                    <p className="font-bold text-amber-300">
-                      ⚠️ Tu pago aún no ha sido marcado como recibido.
+                  <div className="p-4 rounded-xl bg-amber-950/40 border border-amber-900/60 text-xs text-amber-200 space-y-2">
+                    <p className="font-bold text-amber-300 flex items-center gap-1.5">
+                      <Clock className="w-4 h-4 text-amber-400" />
+                      <span>Pago en revisión o pendiente de transferencia</span>
                     </p>
-                    <p className="text-[11px] text-slate-300">
-                      Realiza tu transferencia a la CLABE STP: <strong>012180015582910384</strong> (Flow Productions) con referencia <strong>{ord.id}</strong> y envía tu comprobante a WhatsApp para que se active tu QR oficial.
+                    <p className="text-[11px] text-slate-300 leading-relaxed">
+                      Transfiere <strong>${ord.total_amount?.toFixed(2)} MXN</strong> a BBVA / STP CLABE:
                     </p>
+                    <div className="flex items-center justify-between bg-black/60 p-2 rounded-lg border border-amber-500/30 font-mono text-[11px]">
+                      <span className="text-amber-300 font-bold">012180015678901234</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard.writeText('012180015678901234');
+                          setCopiedClabe(true);
+                          setTimeout(() => setCopiedClabe(false), 2000);
+                        }}
+                        className="text-amber-400 hover:text-white flex items-center gap-1 text-[10px] bg-amber-900/50 px-2 py-1 rounded border border-amber-500/40"
+                      >
+                        <Copy className="w-3 h-3" />
+                        <span>{copiedClabe ? '¡Copiado!' : 'Copiar'}</span>
+                      </button>
+                    </div>
+                    <div className="text-[11px] text-slate-300">
+                      Concepto / Referencia: <strong className="text-red-400 font-mono">{ord.id}</strong>
+                    </div>
+
+                    <a
+                      href={`https://api.whatsapp.com/send?text=${encodeURIComponent(
+                        `Hola, adjunto mi comprobante de pago para Horror Fest 2026.\nFolio: ${ord.id}\nNombre: ${ord.customer_name}\nTotal: $${ord.total_amount} MXN`
+                      )}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-2 w-full py-2 px-3 rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-colors"
+                    >
+                      <MessageCircle className="w-3.5 h-3.5" />
+                      <span>Enviar Comprobante por WhatsApp</span>
+                    </a>
                   </div>
                 )}
               </div>

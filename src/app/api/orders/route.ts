@@ -183,13 +183,28 @@ export async function POST(request: Request) {
       });
     }
 
-    await supabase.from('tickets').insert(tickets);
+    if (tickets.length > 0) {
+      const { error: insertTicketsError } = await supabase.from('tickets').insert(tickets);
+      if (insertTicketsError) {
+        console.error('Error inserting tickets:', insertTicketsError);
+        throw insertTicketsError;
+      }
+    }
+
+    const formattedTickets = tickets.map((t) => ({
+      id: t.id,
+      code: t.ticket_code,
+      image: `/api/tickets/${t.ticket_code}/image?format=png`,
+      price: t.price,
+      attendee: t.attendee_name,
+    }));
 
     return NextResponse.json({
       success: true,
       orderId,
       totalAmount,
       currency: 'MXN',
+      tickets: formattedTickets,
       paymentInstructions: {
         bank: 'BBVA Bancomer',
         beneficiary: 'Flow Productions / Horror Fest',

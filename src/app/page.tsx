@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { Skull, Flame, Calendar, Clock, MapPin, Wine, Search, User, Phone, CheckCircle2, AlertCircle, Copy, Send, ShieldCheck, Tag, Lock } from 'lucide-react';
+import { Skull, Flame, Calendar, Clock, MapPin, Wine, Search, User, Phone, CheckCircle2, AlertCircle, Copy, Send, ShieldCheck, Tag, Lock, Download, MessageCircle, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import TicketTrackerModal from '@/components/TicketTrackerModal';
 
 export default function HorrorFestLandingPage() {
@@ -20,6 +20,7 @@ export default function HorrorFestLandingPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [successData, setSuccessData] = useState<any | null>(null);
+  const [activeTicketIndex, setActiveTicketIndex] = useState(0);
   const [copiedClabe, setCopiedClabe] = useState(false);
   const [eventData, setEventData] = useState<any>(null);
 
@@ -97,18 +98,52 @@ export default function HorrorFestLandingPage() {
     };
   }, [introDismissed]);
 
-  const tierPrice = 150;
-  const tierName = 'Cover General BYOB (Preventa Etapa 1)';
-  const tierId = 'tier_terror_001';
+  const [selectedTierId, setSelectedTierId] = useState<string>('tier_terror_001');
+
+  const tiersList = eventData?.tiers && eventData.tiers.length > 0 ? eventData.tiers : [
+    {
+      id: 'tier_terror_001',
+      name: 'Cover General BYOB (Preventa Etapa 1)',
+      price: 150,
+      badge: 'Preventa Etapa 1',
+    },
+    {
+      id: 'tier_terror_002',
+      name: 'VIP Horror Lounge & Terraza',
+      price: 450,
+      badge: 'VIP Exclusivo',
+    },
+    {
+      id: 'tier_terror_003',
+      name: 'Biker Pack All Access + Hospitality',
+      price: 800,
+      badge: 'Biker Pack VIP',
+    },
+  ];
+
+  const currentTier = tiersList.find((t: any) => t.id === selectedTierId) || tiersList[0];
+  const tierPrice = Number(currentTier?.price) || 150;
   const totalAmount = tierPrice * quantity;
 
   const handleBookingSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+
+    if (!customerName.trim() || customerName.trim().length < 2) {
+      setError('Por favor ingresa tu nombre completo');
+      return;
+    }
+
+    const cleanDigits = customerPhone.replace(/[^\d]/g, '');
+    if (cleanDigits.length < 10) {
+      setError('Por favor ingresa un número de WhatsApp válido (mínimo 10 dígitos)');
+      return;
+    }
+
     setLoading(true);
 
     try {
-      const fullPhone = `${countryCode}${customerPhone.trim()}`;
+      const fullPhone = `${countryCode}${cleanDigits}`;
       const res = await fetch('/api/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -116,7 +151,7 @@ export default function HorrorFestLandingPage() {
           eventId: 'evt_rodada_terror_2026',
           customerName: customerName.trim(),
           customerPhone: fullPhone,
-          tierId,
+          tierId: selectedTierId,
           quantity,
           rpCode: rpCode.trim(),
         }),
@@ -127,6 +162,7 @@ export default function HorrorFestLandingPage() {
         throw new Error(data.error || 'Error al apartar boletos');
       }
 
+      setActiveTicketIndex(0);
       setSuccessData(data);
     } catch (err: any) {
       setError(err.message || 'Error de conexión');
@@ -346,16 +382,39 @@ export default function HorrorFestLandingPage() {
               </p>
             </div>
 
-            {/* Single Tier Configuration */}
-            <div className="mb-6 p-4 rounded-xl bg-red-950/30 border border-red-500/20 flex justify-between items-center">
-              <div>
-                <span className="text-[10px] uppercase text-red-400 font-mono tracking-widest block mb-1">
-                  Preventa • Etapa 1
-                </span>
-                <span className="text-white font-black text-sm">Cover BYOB Libre</span>
-              </div>
-              <div className="text-yellow-500 font-mono font-black text-lg">
-                $150 <span className="text-[10px]">MXN</span>
+            {/* Tier Selector Carousel/Grid */}
+            <div className="space-y-2 mb-6">
+              <span className="text-[10px] uppercase text-slate-400 font-mono tracking-widest block mb-2">
+                Selecciona tu Acceso:
+              </span>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                {tiersList.map((tier: any) => {
+                  const isSelected = tier.id === selectedTierId;
+                  return (
+                    <button
+                      key={tier.id}
+                      type="button"
+                      onClick={() => setSelectedTierId(tier.id)}
+                      className={`text-left p-3 rounded-xl border transition-all duration-300 relative overflow-hidden ${
+                        isSelected
+                          ? 'bg-red-950/70 border-red-500 shadow-[0_0_20px_rgba(220,38,38,0.4)]'
+                          : 'bg-black/50 border-slate-800/70 hover:border-slate-600 text-slate-400'
+                      }`}
+                    >
+                      <div className="flex justify-between items-start gap-1 mb-1">
+                        <span className={`text-[9px] font-mono font-bold uppercase tracking-wider ${isSelected ? 'text-red-400' : 'text-slate-500'}`}>
+                          {tier.badge || 'Acceso'}
+                        </span>
+                        <span className="text-yellow-400 font-mono font-black text-xs">
+                          ${tier.price} <span className="text-[8px]">MXN</span>
+                        </span>
+                      </div>
+                      <div className={`font-black text-xs tracking-tight line-clamp-1 ${isSelected ? 'text-white' : 'text-slate-300'}`}>
+                        {tier.name}
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
@@ -464,51 +523,166 @@ export default function HorrorFestLandingPage() {
       </main>
 
       {/* CONFIRMATION MODAL */}
-      {/* CONFIRMATION MODAL */}
       {successData && (
-        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center p-4 bg-black/95 backdrop-blur-xl animate-in fade-in">
-          
-          <div className="w-full max-w-sm relative z-10 flex flex-col items-center">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/95 backdrop-blur-2xl animate-in fade-in">
+          <div className="w-full max-w-md relative z-10 bg-[#0a0a0f]/95 border border-red-900/60 rounded-3xl p-4 sm:p-6 shadow-[0_0_50px_rgba(220,38,38,0.25)] max-h-[94vh] overflow-y-auto flex flex-col items-center">
             
-            {/* Horizontal Swipeable Tickets */}
-            {successData.tickets && successData.tickets.length > 0 && (
-              <div className="flex w-full overflow-x-auto snap-x snap-mandatory gap-4 pb-4 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-                {successData.tickets.map((tkt: any, idx: number) => (
-                  <div key={tkt.code} className="snap-center shrink-0 w-full relative flex items-center justify-center">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img 
-                      src={tkt.image} 
-                      alt={`Boleto ${tkt.code}`} 
-                      className="w-[90%] max-h-[70vh] object-contain rounded-[2rem] shadow-[0_0_50px_rgba(220,38,38,0.3)] border border-red-900/30" 
-                    />
-                  </div>
-                ))}
-              </div>
-            )}
+            {/* Top Close Button */}
+            <button
+              type="button"
+              onClick={() => setSuccessData(null)}
+              className="absolute top-4 right-4 p-2 rounded-full bg-slate-900/80 border border-slate-700/60 text-slate-400 hover:text-white hover:border-red-500 transition-colors z-20"
+              aria-label="Cerrar modal"
+            >
+              <X className="w-4 h-4" />
+            </button>
 
-            {successData.tickets && successData.tickets.length > 1 && (
-              <div className="flex gap-1.5 justify-center mb-6">
-                {successData.tickets.map((_: any, idx: number) => (
-                  <div key={idx} className="w-1.5 h-1.5 rounded-full bg-red-600/50" />
-                ))}
-              </div>
-            )}
-
-            {/* Bottom Action Bar */}
-            <div className="w-[90%] bg-[#0a0a0f]/80 backdrop-blur-md p-5 rounded-3xl border border-red-900/50 text-center shadow-2xl">
-              <h3 className="text-white text-sm font-black uppercase mb-1 tracking-wider">¡Pre-registro Exitoso!</h3>
-              <p className="text-[11px] text-slate-400 mb-4 leading-relaxed">
-                Tus accesos están pendientes de pago. Enviaremos tus boletos a WhatsApp para que los valides en puerta.
-              </p>
-              
-              <button
-                onClick={() => setSuccessData(null)}
-                className="w-full py-3.5 rounded-xl bg-gradient-to-r from-red-900 to-red-950 text-white font-bold text-xs uppercase tracking-widest shadow-[0_0_20px_rgba(220,38,38,0.2)] hover:shadow-[0_0_30px_rgba(220,38,38,0.4)] transition-all"
-              >
-                Cerrar y Volver
-              </button>
+            {/* Status Pill */}
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-950/80 border border-emerald-500/40 text-emerald-400 font-mono text-[10px] font-bold uppercase tracking-wider mb-3">
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              <span>¡Pre-registro Exitoso! • Folio {successData.orderId}</span>
             </div>
 
+            {/* Ticket Display Card */}
+            {successData.tickets && successData.tickets.length > 0 && (
+              <div className="w-full mb-3 flex flex-col items-center">
+                {/* Single / Active Ticket View */}
+                {(() => {
+                  const safeIndex = Math.min(activeTicketIndex, successData.tickets.length - 1);
+                  const activeTicket = successData.tickets[safeIndex] || successData.tickets[0];
+                  return (
+                    <div className="w-full flex flex-col items-center">
+                      <div className="relative w-full flex items-center justify-center mb-2">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={activeTicket.image}
+                          alt={`Boleto ${activeTicket.code}`}
+                          className="w-full max-h-[46vh] object-contain rounded-2xl shadow-[0_0_30px_rgba(220,38,38,0.35)] border border-red-800/40"
+                        />
+                      </div>
+
+                      {/* Ticket navigation if multiple tickets */}
+                      {successData.tickets.length > 1 && (
+                        <div className="flex items-center justify-between w-full px-2 py-1 mb-2 bg-slate-900/50 rounded-xl border border-slate-800 text-[11px] font-mono text-slate-300">
+                          <button
+                            type="button"
+                            onClick={() => setActiveTicketIndex((prev) => Math.max(0, prev - 1))}
+                            disabled={safeIndex === 0}
+                            className="p-1 rounded hover:bg-slate-800 disabled:opacity-30 disabled:hover:bg-transparent"
+                          >
+                            <ChevronLeft className="w-4 h-4" />
+                          </button>
+                          <span>Boleto {safeIndex + 1} de {successData.tickets.length} ({activeTicket.code})</span>
+                          <button
+                            type="button"
+                            onClick={() => setActiveTicketIndex((prev) => Math.min(successData.tickets.length - 1, prev + 1))}
+                            disabled={safeIndex === successData.tickets.length - 1}
+                            className="p-1 rounded hover:bg-slate-800 disabled:opacity-30 disabled:hover:bg-transparent"
+                          >
+                            <ChevronRight className="w-4 h-4" />
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Action buttons for active ticket */}
+                      <div className="flex gap-2 w-full mb-3">
+                        <a
+                          href={activeTicket.image}
+                          target="_blank"
+                          rel="noreferrer"
+                          download={`Boleto-${activeTicket.code}.png`}
+                          className="flex-1 py-2 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-200 text-xs font-bold font-mono flex items-center justify-center gap-1.5 transition-colors"
+                        >
+                          <Download className="w-3.5 h-3.5 text-red-400" />
+                          <span>Descargar PNG</span>
+                        </a>
+                        <a
+                          href={`https://api.whatsapp.com/send?text=${encodeURIComponent(
+                            `Mi boleto para Horror Fest 2026 (${activeTicket.code}): ${typeof window !== 'undefined' ? window.location.origin : ''}${activeTicket.image}`
+                          )}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="py-2 px-3 rounded-xl bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-600/50 text-emerald-300 text-xs font-bold font-mono flex items-center justify-center gap-1.5 transition-colors"
+                        >
+                          <Send className="w-3.5 h-3.5" />
+                          <span>Compartir</span>
+                        </a>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
+
+            {/* Bank Transfer Instructions */}
+            {successData.paymentInstructions && (
+              <div className="w-full bg-black/80 rounded-2xl p-3.5 border border-red-900/40 text-left mb-3 font-mono text-xs space-y-1.5">
+                <div className="text-[10px] uppercase font-bold text-red-400 tracking-wider mb-1 flex items-center gap-1">
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  <span>Datos de Transferencia Bancaria</span>
+                </div>
+                <div className="flex justify-between text-slate-400">
+                  <span>Banco:</span>
+                  <span className="text-white font-bold">{successData.paymentInstructions.bank}</span>
+                </div>
+                <div className="flex justify-between text-slate-400">
+                  <span>Beneficiario:</span>
+                  <span className="text-white font-bold">{successData.paymentInstructions.beneficiary}</span>
+                </div>
+                <div className="flex justify-between items-center text-slate-400 pt-1 border-t border-slate-800">
+                  <span>CLABE STP:</span>
+                  <button
+                    type="button"
+                    onClick={() => copyToClipboard(successData.paymentInstructions.clabe)}
+                    className="text-amber-400 hover:text-amber-300 font-bold flex items-center gap-1 bg-amber-950/40 px-2 py-0.5 rounded border border-amber-500/30 transition-colors"
+                  >
+                    <span>{successData.paymentInstructions.clabe}</span>
+                    <Copy className="w-3 h-3" />
+                  </button>
+                </div>
+                <div className="flex justify-between text-slate-400">
+                  <span>Concepto:</span>
+                  <span className="text-red-400 font-bold">{successData.paymentInstructions.concept}</span>
+                </div>
+                <div className="flex justify-between text-slate-400 pt-1 border-t border-slate-800">
+                  <span>Total a Pagar:</span>
+                  <span className="text-emerald-400 font-black text-sm">${successData.totalAmount} MXN</span>
+                </div>
+              </div>
+            )}
+
+            {copiedClabe && (
+              <div className="w-full text-center text-[11px] text-emerald-400 font-mono py-1 mb-2 bg-emerald-950/50 rounded-lg border border-emerald-500/30">
+                ✓ CLABE copiada al portapapeles
+              </div>
+            )}
+
+            {/* WhatsApp notification CTA */}
+            <a
+              href={`https://api.whatsapp.com/send?text=${encodeURIComponent(
+                `¡Hola! Ya realicé mi pre-registro para Horror Fest 2026.\n` +
+                `📋 Folio: ${successData.orderId}\n` +
+                `👤 Nombre: ${customerName}\n` +
+                `🎟️ Cantidad: ${quantity} boletos\n` +
+                `💰 Total: $${successData.totalAmount} MXN\n` +
+                `Adjunto mi comprobante de pago bancario.`
+              )}`}
+              target="_blank"
+              rel="noreferrer"
+              className="w-full py-3 px-4 mb-2 rounded-xl bg-gradient-to-r from-emerald-700 to-emerald-900 hover:from-emerald-600 hover:to-emerald-800 text-white font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(16,185,129,0.25)] transition-all"
+            >
+              <MessageCircle className="w-4 h-4" />
+              <span>Enviar Comprobante por WhatsApp</span>
+            </a>
+
+            {/* Close Button */}
+            <button
+              type="button"
+              onClick={() => setSuccessData(null)}
+              className="w-full py-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 font-bold text-xs uppercase tracking-wider transition-colors"
+            >
+              Cerrar y Volver a la Landing
+            </button>
           </div>
         </div>
       )}
