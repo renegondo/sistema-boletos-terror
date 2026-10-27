@@ -1,7 +1,8 @@
 import QRCode from 'qrcode';
 import sharp from 'sharp';
 import path from 'path';
-import fs from 'fs/promises';
+import fs from 'fs';
+import * as opentype from 'opentype.js';
 
 export interface TicketDesignData {
   ticketCode: string;
@@ -15,7 +16,45 @@ export interface TicketDesignData {
   orderId: string;
 }
 
-export async function generateQrVectorSvg(text: string): Promise<{ innerSvg: string, viewBox: string }> {
+let cachedFont: opentype.Font | null = null;
+
+function getFont(): opentype.Font {
+  if (!cachedFont) {
+    const fontPath = path.join(process.cwd(), 'public/fonts/Arial-Bold.ttf');
+    const fontBuf = fs.readFileSync(fontPath);
+    cachedFont = opentype.parse(
+      fontBuf.buffer.slice(fontBuf.byteOffset, fontBuf.byteOffset + fontBuf.byteLength)
+    );
+  }
+  return cachedFont;
+}
+
+export function renderVectorText(
+  text: string,
+  x: number,
+  y: number,
+  fontSize: number,
+  options: { align?: 'left' | 'center' | 'right'; fill?: string } = {}
+): string {
+  if (!text) return '';
+  const font = getFont();
+  const align = options.align || 'left';
+  const fill = options.fill || '#ffffff';
+
+  // Sanitize text to avoid undefined or non-string
+  const cleanStr = String(text).toUpperCase().trim();
+  const width = font.getAdvanceWidth(cleanStr, fontSize);
+
+  let startX = x;
+  if (align === 'center') startX = x - width / 2;
+  if (align === 'right') startX = x - width;
+
+  const p = font.getPath(cleanStr, startX, y, fontSize);
+  p.fill = fill;
+  return p.toSVG(2);
+}
+
+export async function generateQrVectorSvg(text: string): Promise<{ innerSvg: string; viewBox: string }> {
   const rawSvg = await QRCode.toString(text, {
     type: 'svg',
     margin: 1,
@@ -27,7 +66,7 @@ export async function generateQrVectorSvg(text: string): Promise<{ innerSvg: str
   });
 
   const viewBoxMatch = rawSvg.match(/viewBox="([^"]+)"/);
-  const viewBox = viewBoxMatch ? viewBoxMatch[1] : "0 0 30 30";
+  const viewBox = viewBoxMatch ? viewBoxMatch[1] : '0 0 30 30';
   const innerSvg = rawSvg.replace(/<svg[^>]*>/, '').replace(/<\/svg>/, '');
 
   return { innerSvg, viewBox };
@@ -36,11 +75,6 @@ export async function generateQrVectorSvg(text: string): Promise<{ innerSvg: str
 export async function generateTicketSvg(data: TicketDesignData): Promise<string> {
   const qrData = await generateQrVectorSvg(data.ticketCode);
 
-  const escapedTitle = escapeXml(data.eventTitle);
-  const escapedLocation = escapeXml(data.location);
-  const escapedAttendee = escapeXml(data.attendeeName);
-  const escapedTier = escapeXml(data.tierName.toUpperCase());
-
   // Load images
   let bannerBase64 = '';
   let logoBase64 = '';
@@ -48,13 +82,42 @@ export async function generateTicketSvg(data: TicketDesignData): Promise<string>
     const bannerPath = path.join(process.cwd(), 'public/images/banner-rojo.png');
     const bannerBuf = await sharp(bannerPath).resize({ width: 640 }).toBuffer();
     bannerBase64 = `data:image/png;base64,${bannerBuf.toString('base64')}`;
-  } catch(e) {}
-  
+  } catch (e) {}
+
   try {
     const logoPath = path.join(process.cwd(), 'public/images/logo-fondo.png');
     const logoBuf = await sharp(logoPath).resize({ width: 340 }).toBuffer();
     logoBase64 = `data:image/png;base64,${logoBuf.toString('base64')}`;
-  } catch(e) {}
+  } catch (e) {}
+
+  // Format strings
+  const attendeeName = (data.attendeeName || 'ASISTENTE').toUpperCase();
+  const tierName = (data.tierName || 'ACCESO GENERAL').toUpperCase();
+  const eventDate = (data.eventDate || '1 NOV 2026').toUpperCase();
+  const eventTime = data.eventTime ? `${data.eventTime} HRS` : '21:00 HRS';
+  const priceFormatted = `$${Number(data.price || 0).toFixed(2)} MXN`;
+  const orderId = (data.orderId || '').toUpperCase();
+  const ticketCode = (data.ticketCode || '').toUpperCase();
+
+  // Generate vector glyphs using opentype.js
+  const pathTitlePill = renderVectorText('ENTRADA OFICIAL PRE-REGISTRO', 320, 295, 14, { align: 'center', fill: '#ffffff' });
+  const pathLabelAttendee = renderVectorText('TITULAR DEL BOLETO', 65, 368, 12, { align: 'left', fill: '#ef4444' });
+  const pathAttendeeName = renderVectorText(attendeeName, 65, 412, attendeeName.length > 22 ? 22 : 26, { align: 'left', fill: '#ffffff' });
+  const pathPrice = renderVectorText(priceFormatted, 575, 375, 24, { align: 'right', fill: '#facc15' });
+  const pathTier = renderVectorText(tierName, 575, 412, 13, { align: 'right', fill: '#a1a1aa' });
+
+  const pathLabelFecha = renderVectorText('FECHA', 50, 485, 12, { align: 'left', fill: '#ef4444' });
+  const pathFecha = renderVectorText(eventDate, 50, 518, 18, { align: 'left', fill: '#ffffff' });
+
+  const pathLabelAcceso = renderVectorText('ACCESO', 230, 485, 12, { align: 'left', fill: '#ef4444' });
+  const pathAcceso = renderVectorText(eventTime, 230, 518, 18, { align: 'left', fill: '#ffffff' });
+
+  const pathLabelFolio = renderVectorText('FOLIO ORDEN', 590, 485, 12, { align: 'right', fill: '#ef4444' });
+  const pathFolio = renderVectorText(`#${orderId}`, 590, 518, 15, { align: 'right', fill: '#f87171' });
+
+  const pathQrInstruction = renderVectorText('ESCANEA ESTE CÓDIGO QR EN LA PUERTA', 320, 620, 13, { align: 'center', fill: '#f87171' });
+  const pathTicketCode = renderVectorText(ticketCode, 320, 950, 30, { align: 'center', fill: '#ffffff' });
+  const pathFooter = renderVectorText('SISTEMA OFICIAL DE ACCESOS • FLOW PRODUCTIONS', 320, 975, 11, { align: 'center', fill: '#71717a' });
 
   return `
 <svg width="640" height="1000" viewBox="0 0 640 1000" xmlns="http://www.w3.org/2000/svg">
@@ -64,25 +127,10 @@ export async function generateTicketSvg(data: TicketDesignData): Promise<string>
       <stop offset="70%" stop-color="#0f0e15" stop-opacity="0.8" />
       <stop offset="100%" stop-color="#0f0e15" stop-opacity="1" />
     </linearGradient>
-    <filter id="glow">
-      <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
-      <feMerge>
-        <feMergeNode in="coloredBlur"/>
-        <feMergeNode in="SourceGraphic"/>
-      </feMerge>
-    </filter>
     <clipPath id="cardClip">
       <rect x="0" y="0" width="640" height="1000" rx="40" />
     </clipPath>
   </defs>
-
-  <style>
-    .font-sans { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
-    .font-mono { font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace; }
-    .label { font-family: -apple-system, BlinkMacSystemFont, sans-serif; font-size: 13px; font-weight: 800; fill: #ef4444; text-transform: uppercase; letter-spacing: 2px; }
-    .val { font-family: -apple-system, BlinkMacSystemFont, sans-serif; font-size: 20px; font-weight: 900; fill: #ffffff; }
-    .code-txt { font-family: 'SFMono-Regular', Consolas, monospace; font-size: 32px; font-weight: 900; fill: #ffffff; letter-spacing: 4px; }
-  </style>
 
   <!-- Ticket Body Card -->
   <rect x="0" y="0" width="640" height="1000" rx="40" fill="#0f0e15" stroke="#7f1d1d" stroke-width="6" />
@@ -98,27 +146,26 @@ export async function generateTicketSvg(data: TicketDesignData): Promise<string>
     ${logoBase64 ? `<image href="${logoBase64}" x="150" y="40" width="340" height="220" preserveAspectRatio="xMidYMid contain" />` : ''}
   </g>
 
-  <!-- Title & Tier -->
-  <rect x="170" y="270" width="300" height="40" rx="20" fill="#7f1d1d" />
-  <text x="320" y="296" class="font-sans" font-size="16" font-weight="900" fill="#ffffff" text-anchor="middle" letter-spacing="2">ENTRADA OFICIAL PRE-REGISTRO</text>
+  <!-- Title & Tier Pill -->
+  <rect x="160" y="270" width="320" height="38" rx="19" fill="#7f1d1d" stroke="#ef4444" stroke-width="1.5" />
+  ${pathTitlePill}
 
-  <!-- Attendee Section -->
-  <rect x="40" y="340" width="560" height="110" rx="20" fill="#18181b" stroke="#3f3f46" stroke-width="2" />
-  <text x="70" y="375" class="label">TITULAR DEL BOLETO</text>
-  <text x="70" y="415" class="font-sans" font-size="28" font-weight="900" fill="#ffffff">${escapedAttendee}</text>
-  
-  <text x="570" y="380" class="font-sans" font-size="28" font-weight="900" fill="#facc15" text-anchor="end">$${data.price.toFixed(2)}</text>
-  <text x="570" y="410" class="font-mono" font-size="14" font-weight="700" fill="#a1a1aa" text-anchor="end">${escapedTier}</text>
+  <!-- Attendee Section Box -->
+  <rect x="40" y="335" width="560" height="115" rx="20" fill="#14131d" stroke="#27272a" stroke-width="2" />
+  ${pathLabelAttendee}
+  ${pathAttendeeName}
+  ${pathPrice}
+  ${pathTier}
 
   <!-- Info Grid -->
-  <text x="50" y="490" class="label">FECHA</text>
-  <text x="50" y="520" class="val">${escapeXml(data.eventDate)}</text>
+  ${pathLabelFecha}
+  ${pathFecha}
 
-  <text x="250" y="490" class="label">ACCESO</text>
-  <text x="250" y="520" class="val">${escapeXml(data.eventTime)} HRS</text>
+  ${pathLabelAcceso}
+  ${pathAcceso}
 
-  <text x="590" y="490" class="label" text-anchor="end">FOLIO ORDEN</text>
-  <text x="590" y="520" class="font-mono" font-size="18" font-weight="800" fill="#f87171" text-anchor="end">#${data.orderId}</text>
+  ${pathLabelFolio}
+  ${pathFolio}
 
   <!-- Perforation Cutout & Dashed line -->
   <path d="M -10 565 A 30 30 0 0 1 -10 625 Z" fill="#000000" />
@@ -126,12 +173,12 @@ export async function generateTicketSvg(data: TicketDesignData): Promise<string>
   <line x1="30" y1="595" x2="610" y2="595" stroke="#3f3f46" stroke-width="4" stroke-dasharray="12 12" />
 
   <!-- QR Instructions -->
-  <text x="320" y="620" class="label" text-anchor="middle" font-size="15" fill="#f87171" letter-spacing="3" filter="url(#glow)">ESCANEA ESTE CÓDIGO QR EN LA PUERTA</text>
+  ${pathQrInstruction}
 
   <!-- QR Container -->
   <rect x="185" y="640" width="270" height="270" rx="20" fill="#ffffff" stroke="#ef4444" stroke-width="4" />
   
-  <!-- Embedded Pure Vector QR Code (Auto-scaled using dynamic viewBox) -->
+  <!-- Embedded Pure Vector QR Code -->
   <g transform="translate(195, 650)">
     <svg width="250" height="250" viewBox="${qrData.viewBox}" shape-rendering="crispEdges">
       ${qrData.innerSvg}
@@ -145,8 +192,8 @@ export async function generateTicketSvg(data: TicketDesignData): Promise<string>
   <path d="M 465 880 L 465 920 L 425 920" fill="none" stroke="#ef4444" stroke-width="6" stroke-linecap="round" />
 
   <!-- Folio text below QR -->
-  <text x="320" y="950" class="code-txt" text-anchor="middle">${data.ticketCode}</text>
-  <text x="320" y="975" class="font-sans" font-size="12" font-weight="700" fill="#71717a" text-anchor="middle" letter-spacing="1">SISTEMA OFICIAL DE ACCESOS • FLOW PRODUCTIONS</text>
+  ${pathTicketCode}
+  ${pathFooter}
 
 </svg>
   `.trim();
@@ -161,19 +208,5 @@ export async function generateTicketPngBuffer(data: TicketDesignData): Promise<B
 
 export async function generateTicketPngBase64(data: TicketDesignData): Promise<string> {
   const buffer = await generateTicketPngBuffer(data);
-  return `data:image/png;base64,${buffer.toString('base64')}`;
-}
-
-function escapeXml(unsafe: string): string {
-  if (!unsafe) return '';
-  return unsafe.replace(/[<>&'"]/g, (c) => {
-    switch (c) {
-      case '<': return '&lt;';
-      case '>': return '&gt;';
-      case '&': return '&amp;';
-      case '\'': return '&apos;';
-      case '"': return '&quot;';
-      default: return c;
-    }
-  });
+  return buffer.toString('base64');
 }
